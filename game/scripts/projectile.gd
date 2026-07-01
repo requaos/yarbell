@@ -40,6 +40,7 @@ func _explode() -> void:
 	for e in get_tree().get_nodes_in_group("enemies"):
 		if is_instance_valid(e) and e.global_position.distance_to(global_position) <= blast_radius:
 			e.take_damage(damage)
+	Audio.play_sfx("boom")
 	_spawn_blast()
 	queue_free()
 

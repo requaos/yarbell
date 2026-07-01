@@ -14,6 +14,7 @@ const CAMERA_FOLLOW := 5.0
 
 var _camera: Camera3D
 var _cam_look := Vector3.ZERO   # smoothed point the camera centers on
+var _env: Environment
 
 func _ready() -> void:
 	print("Yarbell booted")
@@ -48,9 +49,19 @@ func _setup_environment() -> void:
 	env.set_glow_level(3, 1.0)
 	env.set_glow_level(5, 1.0)
 
+	# Post-process brightness, adjustable from the options menu.
+	env.adjustment_enabled = true
+	env.adjustment_brightness = 1.0
+
+	_env = env
 	var world_env := WorldEnvironment.new()
 	world_env.environment = env
 	add_child(world_env)
+
+## Called by the options modal.
+func set_brightness(value: float) -> void:
+	if _env:
+		_env.adjustment_brightness = value
 
 func _setup_camera() -> void:
 	_camera = Camera3D.new()

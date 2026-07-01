@@ -92,10 +92,12 @@ func _fire() -> void:
 			if t:
 				t.take_damage(attack_damage)
 				_show_beam(t.global_position)
+				Audio.play_sfx("fire")
 		Type.MISSILE:
 			var t := _nearest_enemy(attack_range)
 			if t:
 				_launch_missile(t.global_position)
+				Audio.play_sfx("fire")
 		Type.SHOCKWAVE:
 			_emit_shockwave()
 		Type.SLOW:

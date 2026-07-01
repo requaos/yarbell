@@ -128,5 +128,6 @@ func take_damage(amount: int) -> void:
 		_dead = true
 		remove_from_group("enemies")
 		GameState.add_coins(coin_drop)
+		Audio.play_sfx("death")
 		died.emit(self)
 		queue_free()
