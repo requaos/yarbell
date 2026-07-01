@@ -46,7 +46,13 @@ func _spawn_one() -> void:
 	var enemy := EnemyScene.instantiate()
 	_parent.add_child(enemy)
 	enemy.global_position = _spawns[_spawned % _spawns.size()]
-	enemy.configure(int(_cfg["enemy_hp"]), float(_cfg["enemy_speed"]), _target)
+	enemy.configure(
+		int(_cfg["enemy_hp"]),
+		float(_cfg["enemy_speed"]),
+		_target,
+		int(_cfg["enemy_damage"]),
+		float(_cfg["enemy_scale"]),
+		_cfg["enemy_color"])
 	enemy.died.connect(_on_enemy_died)
 	_spawned += 1
 	_alive += 1

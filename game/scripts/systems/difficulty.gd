@@ -1,19 +1,27 @@
 class_name Difficulty
 extends RefCounted
-## Static per-level difficulty tuning. Difficulty rises smoothly and the total
-## enemy count is balanced against the number of tower sites, so more sites also
-## means more enemies.
+## Static per-level difficulty tuning. Enemies grow bigger, stronger, and more
+## numerous as levels rise; the number of tower sites grows too (weighted so the
+## player has more towers to work with, but they start inactive).
 
 static func config_for(level: int) -> Dictionary:
-	var sites := clampi(3 + (level - 1) / 2, 3, 8)
-	var total_enemies := roundi((6.0 + 2.0 * (level - 1)) * (1.0 + 0.2 * (sites - 3)))
-	var enemy_hp := roundi(10.0 * (1.0 + 0.15 * (level - 1)))
-	var enemy_speed := 4.5 + 0.1 * (level - 1)   # larger maze map -> faster movement to keep pace
-	var spawn_interval := maxf(0.4, 1.2 - 0.05 * level)
+	var sites := clampi(4 + (level - 1), 4, 12)
+	var total_enemies := roundi((5.0 + 1.6 * (level - 1)) * (1.0 + 0.08 * (sites - 4)))
+	var enemy_hp := roundi(10.0 * (1.0 + 0.22 * (level - 1)))
+	var enemy_damage := 3 + (level - 1)
+	var enemy_speed := 4.5 + 0.1 * (level - 1)
+	var enemy_scale := minf(2.2, 1.0 + 0.06 * (level - 1))
+	var spawn_interval := maxf(0.35, 1.1 - 0.05 * level)
+	# Weaker enemies read red; stronger ones shift toward a hot white/gold.
+	var heat := clampf((level - 1) / 12.0, 0.0, 1.0)
+	var enemy_color := Palette.RED.lerp(Color(1.0, 0.85, 0.4), heat)
 	return {
 		"secondary_sites": sites,
 		"total_enemies": total_enemies,
 		"enemy_hp": enemy_hp,
+		"enemy_damage": enemy_damage,
 		"enemy_speed": enemy_speed,
+		"enemy_scale": enemy_scale,
+		"enemy_color": enemy_color,
 		"spawn_interval": spawn_interval,
 	}

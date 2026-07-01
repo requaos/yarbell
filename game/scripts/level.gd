@@ -95,16 +95,17 @@ func _bake_navmesh() -> void:
 
 func _place_towers() -> void:
 	var primary := TowerScene.instantiate()
-	primary.is_primary = true
-	primary.tint = Palette.GOLD
+	primary.tower_type = Tower.Type.PRIMARY
 	primary.position = primary_position
 	add_child(primary)
 	primary.add_to_group("primary")
 
-	# One tower per generated alcove, so enemies pass each on the way in.
+	# One tower per generated site, with a random type (Pulse most common). All
+	# secondaries start inactive until the player upgrades them.
+	var weighted := [Tower.Type.PULSE, Tower.Type.PULSE, Tower.Type.MISSILE, Tower.Type.SHOCKWAVE]
 	for pos in _data["secondary_sites"]:
 		var tower := TowerScene.instantiate()
-		tower.tint = Palette.CYAN
+		tower.tower_type = weighted[randi() % weighted.size()]
 		tower.position = pos
 		add_child(tower)
 		tower.add_to_group("towers")

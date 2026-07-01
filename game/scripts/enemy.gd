@@ -1,7 +1,9 @@
 extends Node3D
 ## Neon "drone" enemy. Navigates the baked navmesh toward the primary tower
-## (climbing ramps as needed), then damages it on arrival. Dies when its HP is
-## depleted, dropping a few coins. Found by towers via the "enemies" group.
+## (climbing ramps as needed), then damages it on arrival. Scales in size, HP,
+## damage and colour with the level. Dies when its HP is depleted, dropping a
+## few coins. Found by towers via the "enemies" group. Supports a shockwave
+## damage-over-time effect.
 
 signal died(enemy)
 
@@ -18,35 +20,54 @@ var _attack_accum := 0.0
 var _spin := 0.0
 var _dead := false
 
+var _scale := 1.0
+var _color := Palette.RED
+var _body: MeshInstance3D
+
+# Shockwave damage-over-time.
+var _dot_dps := 0.0
+var _dot_time := 0.0
+var _dot_accum := 0.0
+
 ## Set by the spawner right after instantiation.
-func configure(hp: int, move_speed: float, target: Vector3) -> void:
+func configure(hp: int, move_speed: float, target: Vector3, damage: int, size: float, color: Color) -> void:
 	max_hp = hp
 	_hp = hp
 	speed = move_speed
 	_target = target
+	attack_damage = damage
+	_scale = size
+	_color = color
+	coin_drop = 1 + int(round(size))
 	if _agent:
 		_agent.target_position = target
+	_apply_appearance()
 
 func _ready() -> void:
 	add_to_group("enemies")
 
-	var body := MeshInstance3D.new()
+	_body = MeshInstance3D.new()
 	var mesh := SphereMesh.new()
 	mesh.radius = 0.28
 	mesh.height = 0.56
 	mesh.radial_segments = 6
 	mesh.rings = 3
-	body.mesh = mesh
-	body.position = Vector3(0.0, 0.4, 0.0)
-	body.material_override = Palette.emissive(Palette.RED, 6.5)
-	add_child(body)
+	_body.mesh = mesh
+	add_child(_body)
+	_apply_appearance()
 
 	_agent = NavigationAgent3D.new()
 	_agent.path_desired_distance = 0.4
 	_agent.target_desired_distance = 0.6
 	add_child(_agent)
-	# Navmesh/map may need a frame to sync before a path is available.
 	call_deferred("_apply_target")
+
+func _apply_appearance() -> void:
+	if _body == null:
+		return
+	_body.scale = Vector3.ONE * _scale
+	_body.position = Vector3(0.0, 0.4 * _scale, 0.0)
+	_body.material_override = Palette.emissive(_color, 6.5)
 
 func _apply_target() -> void:
 	if _agent:
@@ -55,6 +76,18 @@ func _apply_target() -> void:
 func _process(delta: float) -> void:
 	_spin += delta * 2.0
 	rotation.y = _spin
+
+	if _dot_time > 0.0:
+		_dot_time -= delta
+		_dot_accum += _dot_dps * delta
+		if _dot_accum >= 1.0:
+			var whole := int(_dot_accum)
+			_dot_accum -= whole
+			take_damage(whole)
+			if _dead:
+				return
+		if _dot_time <= 0.0:
+			_dot_dps = 0.0
 
 	if global_position.distance_to(_target) < 1.2:
 		_attack_accum += delta
@@ -68,13 +101,17 @@ func _process(delta: float) -> void:
 	var next := _agent.get_next_path_position()
 	global_position = global_position.move_toward(next, speed * delta)
 
+## Applied by shockwave towers; refreshes rather than stacks.
+func apply_dot(dps: float, duration: float) -> void:
+	_dot_dps = maxf(_dot_dps, dps)
+	_dot_time = maxf(_dot_time, duration)
+
 func take_damage(amount: int) -> void:
 	if _dead:
 		return
 	_hp -= amount
 	if _hp <= 0:
 		_dead = true
-		# Leave the group immediately so towers can't target it again this frame.
 		remove_from_group("enemies")
 		GameState.add_coins(coin_drop)
 		died.emit(self)
