@@ -42,7 +42,7 @@ func configure(hp: int, move_speed: float, target: Vector3, damage: int, size: f
 	attack_damage = damage
 	_scale = size
 	_color = color
-	coin_drop = 1 + int(round(size))
+	coin_drop = 2 + int(round(size * 2.0))   # stronger (bigger) enemies pay out more
 	if _agent:
 		_agent.target_position = target
 	_apply_appearance()

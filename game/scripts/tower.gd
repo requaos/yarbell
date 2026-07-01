@@ -24,6 +24,7 @@ var attack_range := 4.5
 var attack_interval := 0.8
 var upgrade_level := 0
 var upgrade_cost := 40
+var cost_step := 12   # linear cost growth per upgrade (keeps deep leveling affordable)
 
 # Missile
 var projectile_speed := 6.0
@@ -72,7 +73,7 @@ func upgrade() -> void:
 	shock_radius *= 1.06
 	dot_dps *= 1.25
 	slow_factor = maxf(0.2, slow_factor * 0.85)   # lower = slower enemies
-	upgrade_cost = roundi(upgrade_cost * 1.3)      # gentler cost scaling
+	upgrade_cost += cost_step                       # linear growth, not exponential
 	_refresh_visual()
 	var target_scale := minf(2.0, 1.0 + (upgrade_level - 1) * 0.12)
 	var tween := create_tween()
