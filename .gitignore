@@ -1,0 +1,17 @@
+# Nix
+result
+result-*
+
+# Godot
+game/.godot/
+game/.import/
+game/android/
+export.cfg
+
+# Build artifacts
+/build/
+*.apk
+*.aab
+
+# macOS
+.DS_Store
