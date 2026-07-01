@@ -18,6 +18,7 @@ var _env: Environment
 
 func _ready() -> void:
 	print("Yarbell booted")
+	add_to_group("game")
 	_setup_environment()
 	_setup_light()
 	_setup_camera()
@@ -51,7 +52,7 @@ func _setup_environment() -> void:
 
 	# Post-process brightness, adjustable from the options menu.
 	env.adjustment_enabled = true
-	env.adjustment_brightness = 1.0
+	env.adjustment_brightness = GameState.brightness
 
 	_env = env
 	var world_env := WorldEnvironment.new()
@@ -60,6 +61,7 @@ func _setup_environment() -> void:
 
 ## Called by the options modal.
 func set_brightness(value: float) -> void:
+	GameState.brightness = value
 	if _env:
 		_env.adjustment_brightness = value
 

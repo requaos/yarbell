@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3 uid="uid://byarbellgame01"]
+[gd_scene load_steps=5 format=3 uid="uid://byarbellgame01"]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_game"]
 [ext_resource type="PackedScene" path="res://scenes/level/level.tscn" id="2_level"]
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="3_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/options_modal.tscn" id="4_opt"]
 
 [node name="Game" type="Node3D"]
 script = ExtResource("1_game")
@@ -10,3 +11,5 @@ script = ExtResource("1_game")
 [node name="Level" parent="." instance=ExtResource("2_level")]
 
 [node name="HUD" parent="." instance=ExtResource("3_hud")]
+
+[node name="OptionsModal" parent="." instance=ExtResource("4_opt")]

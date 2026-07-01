@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://byarbelloptions01"]
+
+[ext_resource type="Script" path="res://scripts/options_modal.gd" id="1_opt"]
+
+[node name="OptionsModal" type="CanvasLayer"]
+script = ExtResource("1_opt")

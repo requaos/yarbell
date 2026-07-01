@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Yarbell"
-run/main_scene="res://scenes/game/game.tscn"
+run/main_scene="res://scenes/ui/title.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
 

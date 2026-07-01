@@ -26,6 +26,7 @@ var level: int = 1:
 		level = value
 		level_changed.emit(level)
 
+var brightness: float = 1.5   # options default (top of the old 0.5-1.5 range)
 var primary_max_hp: int = 100
 var primary_hp: int = 100:
 	set(value):
