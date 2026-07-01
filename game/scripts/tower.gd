@@ -181,7 +181,7 @@ func _configure_type() -> void:
 		Type.MISSILE:
 			tint = Color(1.0, 0.55, 0.15)
 			coin_rate = 5
-			attack_damage = 7
+			attack_damage = 16
 			attack_range = 6.0
 			attack_interval = 2.0
 			upgrade_cost = 55

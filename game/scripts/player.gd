@@ -6,7 +6,7 @@ extends Node3D
 signal tower_upgraded(cost: int)
 signal upgrade_failed()
 
-var speed := 4.0
+var speed := 7.0
 var interact_range := 2.5
 
 var _agent: NavigationAgent3D
