@@ -1,13 +1,15 @@
 class_name TerrainGenerator
 extends RefCounted
-## Procedurally builds a chain of plateaus at rising elevations, connected by
-## ramps, forming the walkable route from the spawn plateau up to the primary
-## tower on the top plateau. Every non-plateau cell becomes a solid wall block,
-## so the navmesh only covers the plateaus + ramps: enemies are forced along the
-## climbing route, past the towers placed on each plateau, and the ramps act as
-## elevation chokepoints. Deterministic per level number.
+## Procedurally builds a serpentine of terraces: wide plateaus stacked at rising
+## elevations, each connected to the next by a ramp placed at alternating ends
+## (right, left, right, ...). Enemies must traverse the full width of a terrace,
+## climb the ramp, cross back the other way, climb again — a long switchback
+## path from the entry edge up to the primary tower on the top terrace, using
+## the whole landscape. Towers sit along each terrace, so enemies pass them the
+## entire way up, and the ramps are elevation chokepoints. Deterministic per
+## level number.
 ##
-## Plateau/ramp surfaces are StaticBody3D + BoxMesh + BoxShape3D on the TERRAIN
+## Terrace/ramp surfaces are StaticBody3D + BoxMesh + BoxShape3D on the TERRAIN
 ## layer (feed the navmesh bake and tap rays). Walls are visual-only (no
 ## collider) so they stay out of the navmesh.
 
@@ -15,7 +17,9 @@ enum { WALL, PLATEAU, RAMP }
 
 const GRID_W := 16
 const GRID_H := 16
-const STEP := 0.6                # elevation gained per plateau
+const X_MARGIN := 2          # side walls
+const STRIP_DEPTH := 3       # z-depth of each terrace
+const STEP := 0.6            # elevation gained per terrace
 const BASE_THICKNESS := 0.3
 const RAMP_WIDTH := 2.0
 const CANYON_STEP := 0.7
@@ -23,74 +27,63 @@ const GridShader := preload("res://assets/shaders/grid.gdshader")
 
 var _rng := RandomNumberGenerator.new()
 var _cells: Array = []
-var _plateaus: Array = []        # [{x0, x1, z0, z1, elev}] front -> top
+var _plateaus: Array = []    # [{x0, x1, z0, z1, elev}] front(low) -> top
+var _ramps: Array = []       # [{a, b, end, cell_x}]
 var _grid_mat: ShaderMaterial
 var _wall_mats: Dictionary = {}
 
 func generate(region: NavigationRegion3D, level: int, site_count: int) -> Dictionary:
 	_rng.seed = level * 1013 + 17
 	_init_cells()
-	_plateaus = _build_plateaus()
+	_plateaus = _build_terraces()
+	_compute_ramps()
 	_mark_cells()
 
 	for p in _plateaus:
-		_build_plateau(region, p)
-	for i in range(_plateaus.size() - 1):
-		_build_ramp_between(region, _plateaus[i], _plateaus[i + 1])
+		_build_terrace(region, p)
+	for r in _ramps:
+		_build_ramp(region, r)
 	_build_walls(region)
 
 	return _collect_data(site_count)
 
 # --- layout -------------------------------------------------------------------
 
-func _build_plateaus() -> Array:
+func _build_terraces() -> Array:
+	var rows := _rng.randi_range(3, 4)
+	var x0 := X_MARGIN
+	var w := GRID_W - 2 * X_MARGIN
 	var plateaus: Array = []
-	var num := _rng.randi_range(2, 3)
-	var z0 := 1
-	var elev := 0
-	var prev = null
-	for p in num:
-		var depth := _rng.randi_range(3, 4)
-		var width := _rng.randi_range(4, 5)
-		var z1 := z0 + depth - 1
-		if z1 > GRID_H - 2:
+	var z := 1
+	for i in rows:
+		var z1 := z + STRIP_DEPTH - 1
+		if z1 > GRID_H - 1:
 			break
-		var x0: int
-		if prev == null:
-			x0 = _rng.randi_range(1, GRID_W - 1 - width)
-		else:
-			var span: int = mini(width, prev.x1 - prev.x0 + 1)
-			var max_shift: int = maxi(0, span - 2)
-			var shift := _rng.randi_range(-max_shift, max_shift)
-			x0 = clampi(prev.x0 + shift, 1, GRID_W - 1 - width)
-			# Guarantee at least 2 cells of x-overlap for the ramp.
-			var overlap: int = mini(x0 + width - 1, prev.x1) - maxi(x0, prev.x0) + 1
-			if overlap < 2:
-				x0 = clampi(prev.x0, 1, GRID_W - 1 - width)
-		var rect := {"x0": x0, "x1": x0 + width - 1, "z0": z0, "z1": z1, "elev": elev}
-		plateaus.append(rect)
-		prev = rect
-		elev += 1
-		z0 = z1 + 2   # one-cell gap between plateaus for the ramp
+		plateaus.append({"x0": x0, "x1": x0 + w - 1, "z0": z, "z1": z1, "elev": i})
+		z = z1 + 2   # one-cell gap between terraces for the ramp/step
 	return plateaus
+
+func _compute_ramps() -> void:
+	_ramps = []
+	for i in range(_plateaus.size() - 1):
+		var a: Dictionary = _plateaus[i]
+		var end := "right" if (i % 2 == 0) else "left"
+		var cell_x: int = (a.x1 - 1) if end == "right" else a.x0
+		_ramps.append({"a": a, "b": _plateaus[i + 1], "end": end, "cell_x": cell_x})
 
 func _mark_cells() -> void:
 	for p in _plateaus:
 		for ix in range(p.x0, p.x1 + 1):
 			for iz in range(p.z0, p.z1 + 1):
 				_cells[ix][iz] = PLATEAU
-	# Mark the ramp gap rows so walls don't bury the ramps.
-	for i in range(_plateaus.size() - 1):
-		var a = _plateaus[i]
-		var b = _plateaus[i + 1]
-		var ox0: int = maxi(a.x0, b.x0)
-		var ox1: int = mini(a.x1, b.x1)
-		for ix in range(ox0, ox1 + 1):
-			_cells[ix][a.z1 + 1] = RAMP
+	for r in _ramps:
+		var gz: int = r.a.z1 + 1
+		_cells[r.cell_x][gz] = RAMP
+		_cells[r.cell_x + 1][gz] = RAMP
 
 # --- geometry -----------------------------------------------------------------
 
-func _build_plateau(region: NavigationRegion3D, p: Dictionary) -> void:
+func _build_terrace(region: NavigationRegion3D, p: Dictionary) -> void:
 	var w: int = p.x1 - p.x0 + 1
 	var d: int = p.z1 - p.z0 + 1
 	var top: float = p.elev * STEP
@@ -101,11 +94,10 @@ func _build_plateau(region: NavigationRegion3D, p: Dictionary) -> void:
 		(p.z0 + d / 2.0) - GRID_H / 2.0)
 	region.add_child(_make_box_body(Vector3(w, height, d), center, _grid_material()))
 
-func _build_ramp_between(region: NavigationRegion3D, a: Dictionary, b: Dictionary) -> void:
-	var ox0: int = maxi(a.x0, b.x0)
-	var ox1: int = mini(a.x1, b.x1)
-	var xc: float = ((ox0 + ox1 + 1) / 2.0) - GRID_W / 2.0
-	var ramp_w: float = minf(RAMP_WIDTH, float(ox1 - ox0 + 1))
+func _build_ramp(region: NavigationRegion3D, r: Dictionary) -> void:
+	var a: Dictionary = r.a
+	var b: Dictionary = r.b
+	var xc: float = (r.cell_x + 1) - GRID_W / 2.0   # center of the two ramp cells
 	var low := Vector3(xc, a.elev * STEP, (a.z1 + 1) - GRID_H / 2.0)
 	var high := Vector3(xc, b.elev * STEP, b.z0 - GRID_H / 2.0)
 	var length := high.distance_to(low)
@@ -117,7 +109,7 @@ func _build_ramp_between(region: NavigationRegion3D, a: Dictionary, b: Dictionar
 	body.global_position = (high + low) / 2.0
 	body.look_at(body.global_position + (low - high), Vector3.UP)
 
-	var size := Vector3(ramp_w, 0.15, length)
+	var size := Vector3(RAMP_WIDTH, 0.15, length)
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = size
@@ -187,14 +179,21 @@ func _wall_material(tiers: int) -> StandardMaterial3D:
 # --- data ---------------------------------------------------------------------
 
 func _collect_data(site_count: int) -> Dictionary:
-	var front: Dictionary = _plateaus[0]
+	var row0: Dictionary = _plateaus[0]
 	var top: Dictionary = _plateaus[_plateaus.size() - 1]
 
-	var primary := _cell_center((top.x0 + top.x1 + 1) / 2.0 - 0.5, top.z1, top.elev * STEP)
-
+	# Enemies enter row 0 at the end opposite its ramp, and cross to reach it.
+	var enter_right: bool = (_ramps[0].end == "left")
+	var spawn_x: int = (row0.x1 - 1) if enter_right else (row0.x0 + 1)
 	var spawns: Array = []
-	for ix in range(front.x0, front.x1 + 1):
-		spawns.append(_cell_center(ix, front.z0, front.elev * STEP))
+	for iz in range(row0.z0, row0.z1 + 1):
+		spawns.append(_cell_center(spawn_x, iz, row0.elev * STEP))
+
+	# The primary sits at the far end of the top terrace from where enemies arrive.
+	var arrive_end: String = _ramps[_ramps.size() - 1].end
+	var prim_x: int = (top.x0 + 1) if arrive_end == "right" else (top.x1 - 1)
+	var prim_z: int = int((top.z0 + top.z1) / 2.0)
+	var primary := _cell_center(prim_x, prim_z, top.elev * STEP)
 
 	var walkable: Array = []
 	for p in _plateaus:
@@ -202,7 +201,7 @@ func _collect_data(site_count: int) -> Dictionary:
 			for iz in range(p.z0, p.z1 + 1):
 				walkable.append(_cell_center(ix, iz, p.elev * STEP))
 
-	var player_start := _cell_center((front.x0 + front.x1) / 2.0, front.z0 + 1, front.elev * STEP)
+	var player_start := _cell_center((row0.x0 + row0.x1) / 2.0, (row0.z0 + row0.z1) / 2.0, row0.elev * STEP)
 
 	return {
 		"primary_position": primary,
@@ -213,30 +212,27 @@ func _collect_data(site_count: int) -> Dictionary:
 		"terrain_size": Vector2(GRID_W, GRID_H),
 	}
 
-## Distribute towers across the plateaus (round-robin) so enemies pass towers on
-## every level of the climb. Picks edge cells that still cover the crossing route.
+## Spread towers along every terrace so enemies pass towers the whole way up.
 func _pick_sites(site_count: int, primary: Vector3) -> Array:
 	var per_plateau: Array = []
 	for p in _plateaus:
-		var cells: Array = [
-			_cell_center(p.x0, p.z0, p.elev * STEP),
-			_cell_center(p.x1, p.z1, p.elev * STEP),
-			_cell_center(p.x0, p.z1, p.elev * STEP),
-			_cell_center(p.x1, p.z0, p.elev * STEP),
-		]
+		var mid_z: int = int((p.z0 + p.z1) / 2.0)
+		var cells: Array = []
+		for frac in [0.2, 0.5, 0.8]:
+			var x: int = p.x0 + int((p.x1 - p.x0) * frac)
+			cells.append(_cell_center(x, mid_z, p.elev * STEP))
 		_shuffle(cells)
 		per_plateau.append(cells)
 
 	var sites: Array = []
 	var round := 0
-	while sites.size() < site_count and round < 4:
+	while sites.size() < site_count and round < 3:
 		for cells in per_plateau:
 			if sites.size() >= site_count:
 				break
-			if round < cells.size():
-				var pos: Vector3 = cells[round]
-				if pos.distance_to(primary) > 1.2:
-					sites.append(pos)
+			var pos: Vector3 = cells[round]
+			if pos.distance_to(primary) > 1.5:
+				sites.append(pos)
 		round += 1
 	return sites
 
