@@ -126,7 +126,7 @@ func _build_visual() -> void:
 	core_mesh.size = Vector3(0.3, 0.3, 0.3)
 	_core.mesh = core_mesh
 	_core.position = Vector3(0.0, 0.45, 0.0)
-	_core.material_override = Palette.emissive(tint, 4.0)
+	_core.material_override = Palette.emissive(tint, 6.5)
 	add_child(_core)
 
 	var ring := MeshInstance3D.new()
@@ -135,7 +135,7 @@ func _build_visual() -> void:
 	ring_mesh.outer_radius = 0.36
 	ring.mesh = ring_mesh
 	ring.position = Vector3(0.0, 0.62, 0.0)
-	ring.material_override = Palette.emissive(tint, 5.0)
+	ring.material_override = Palette.emissive(tint, 8.0)
 	add_child(ring)
 
 	if is_primary:
@@ -147,5 +147,5 @@ func _build_visual() -> void:
 		beacon_mesh.height = 0.9
 		beacon.mesh = beacon_mesh
 		beacon.position = Vector3(0.0, 1.1, 0.0)
-		beacon.material_override = Palette.emissive(tint, 6.0)
+		beacon.material_override = Palette.emissive(tint, 9.0)
 		add_child(beacon)

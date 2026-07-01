@@ -188,7 +188,7 @@ func _build_ramp(region: NavigationRegion3D, a: Vector2i, b: Vector2i, pr: Array
 	var box := BoxMesh.new()
 	box.size = size
 	mesh.mesh = box
-	mesh.material_override = Palette.emissive(Palette.PURPLE, 2.5)
+	mesh.material_override = Palette.emissive(Palette.PURPLE, 1.4)
 	body.add_child(mesh)
 	var col := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
@@ -222,7 +222,9 @@ func _build_walls(region: NavigationRegion3D) -> void:
 		var h := tiers * CANYON_STEP
 		var basis := Basis.IDENTITY.scaled(Vector3(1.0, h, 1.0))
 		mm.set_instance_transform(i, Transform3D(basis, _cell_center(c.x, c.y, h / 2.0)))
-		mm.set_instance_color(i, palette[(tiers - 1) % palette.size()].darkened(0.35))
+		# Keep the landscape dim so the glowing units and path read on top of it.
+		# MultiMesh instance colors are consumed as linear, so convert from sRGB.
+		mm.set_instance_color(i, palette[(tiers - 1) % palette.size()].darkened(0.78).srgb_to_linear())
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
@@ -269,7 +271,7 @@ func _grid_material() -> ShaderMaterial:
 		_grid_mat.set_shader_parameter("bg_color", Vector3(0.02, 0.02, 0.08))
 		_grid_mat.set_shader_parameter("cell_size", 1.0)
 		_grid_mat.set_shader_parameter("line_width", 0.05)
-		_grid_mat.set_shader_parameter("glow", 1.6)
+		_grid_mat.set_shader_parameter("glow", 0.9)
 	return _grid_mat
 
 # --- data ---------------------------------------------------------------------

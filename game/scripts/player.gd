@@ -82,7 +82,7 @@ func _build_visual() -> void:
 	cone.radial_segments = 4
 	body.mesh = cone
 	body.position = Vector3(0.0, 0.35, 0.0)
-	body.material_override = Palette.emissive(Color(0.4, 1.0, 1.0), 4.0)
+	body.material_override = Palette.emissive(Color(0.4, 1.0, 1.0), 6.5)
 	add_child(body)
 
 	var head := MeshInstance3D.new()
@@ -91,7 +91,7 @@ func _build_visual() -> void:
 	sphere.height = 0.32
 	head.mesh = sphere
 	head.position = Vector3(0.0, 0.85, 0.0)
-	head.material_override = Palette.emissive(Color.WHITE, 5.0)
+	head.material_override = Palette.emissive(Color.WHITE, 8.0)
 	add_child(head)
 
 func _build_area() -> void:

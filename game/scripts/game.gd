@@ -6,11 +6,28 @@ extends Node3D
 ## The level is centered on the origin.
 const LEVEL_CENTER := Vector3.ZERO
 
+## Orthographic view height in world units (zoom). Lower = closer. Kept at a
+## medium distance so a good chunk of the maze around the player is visible.
+const CAMERA_SIZE := 16.0
+const CAMERA_DISTANCE := 60.0
+const CAMERA_FOLLOW := 5.0
+
+var _camera: Camera3D
+var _cam_look := Vector3.ZERO   # smoothed point the camera centers on
+
 func _ready() -> void:
 	print("Yarbell booted")
 	_setup_environment()
 	_setup_light()
 	_setup_camera()
+
+func _process(delta: float) -> void:
+	var level := get_node_or_null("Level")
+	if level == null or not is_instance_valid(level.player):
+		return
+	var target: Vector3 = level.player.global_position
+	_cam_look = _cam_look.lerp(target, clampf(delta * CAMERA_FOLLOW, 0.0, 1.0))
+	_place_camera()
 
 func _setup_environment() -> void:
 	var env := Environment.new()
@@ -36,23 +53,27 @@ func _setup_environment() -> void:
 	add_child(world_env)
 
 func _setup_camera() -> void:
-	# Frame the camera to the generated level (built during the Level node's
-	# _ready, which runs before this parent's _ready).
-	var span := 16.0
-	var level := get_node_or_null("Level")
-	if level:
-		span = maxf(level.terrain_size.x, level.terrain_size.y)
+	_camera = Camera3D.new()
+	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_camera.size = CAMERA_SIZE
+	_camera.near = 0.05
+	_camera.far = 400.0
+	add_child(_camera)
 
-	var camera := Camera3D.new()
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = span * 1.15 + 2.0
-	camera.near = 0.05
-	camera.far = 300.0
-	# Looking from an equal-axis direction yields true isometric projection.
-	camera.position = LEVEL_CENTER + Vector3(1.0, 1.0, 1.0).normalized() * 60.0
-	add_child(camera)
-	camera.look_at(LEVEL_CENTER, Vector3.UP)
-	camera.make_current()
+	# Start centered on the player if it exists yet, else the level origin.
+	var level := get_node_or_null("Level")
+	if level and is_instance_valid(level.player):
+		_cam_look = level.player.global_position
+	else:
+		_cam_look = LEVEL_CENTER
+	_place_camera()
+	_camera.make_current()
+
+## Keep the isometric view centered on `_cam_look` (offset along the equal-axis
+## direction gives true isometric projection).
+func _place_camera() -> void:
+	_camera.position = _cam_look + Vector3(1.0, 1.0, 1.0).normalized() * CAMERA_DISTANCE
+	_camera.look_at(_cam_look, Vector3.UP)
 
 func _setup_light() -> void:
 	var sun := DirectionalLight3D.new()

@@ -38,7 +38,7 @@ func _ready() -> void:
 	mesh.rings = 3
 	body.mesh = mesh
 	body.position = Vector3(0.0, 0.4, 0.0)
-	body.material_override = Palette.emissive(Palette.RED, 4.0)
+	body.material_override = Palette.emissive(Palette.RED, 6.5)
 	add_child(body)
 
 	_agent = NavigationAgent3D.new()
