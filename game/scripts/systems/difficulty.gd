@@ -8,7 +8,7 @@ static func config_for(level: int) -> Dictionary:
 	var sites := clampi(3 + (level - 1) / 2, 3, 8)
 	var total_enemies := roundi((6.0 + 2.0 * (level - 1)) * (1.0 + 0.2 * (sites - 3)))
 	var enemy_hp := roundi(10.0 * (1.0 + 0.15 * (level - 1)))
-	var enemy_speed := 2.2 + 0.05 * (level - 1)
+	var enemy_speed := 4.5 + 0.1 * (level - 1)   # larger maze map -> faster movement to keep pace
 	var spawn_interval := maxf(0.4, 1.2 - 0.05 * level)
 	return {
 		"secondary_sites": sites,

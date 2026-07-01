@@ -1,107 +1,181 @@
 class_name TerrainGenerator
 extends RefCounted
-## Procedurally builds a serpentine of terraces: wide plateaus stacked at rising
-## elevations, each connected to the next by a ramp placed at alternating ends
-## (right, left, right, ...). Enemies must traverse the full width of a terrace,
-## climb the ramp, cross back the other way, climb again — a long switchback
-## path from the entry edge up to the primary tower on the top terrace, using
-## the whole landscape. Towers sit along each terrace, so enemies pass them the
-## entire way up, and the ramps are elevation chokepoints. Deterministic per
-## level number.
+## Procedurally builds the landscape from a maze. A recursive-backtracker maze is
+## carved over a coarse node grid; the enemy route is the maze's solution path
+## from the entry corner to the farthest node — a single long winding corridor
+## that differs every level. The corridor climbs in elevation tiers, with ramps
+## placed on the straight passages between nodes (natural chokepoints) up to the
+## primary tower on the highest node. Every non-corridor cell becomes a wall,
+## rendered with a MultiMesh (one draw call) so the large map stays cheap.
 ##
-## Terrace/ramp surfaces are StaticBody3D + BoxMesh + BoxShape3D on the TERRAIN
-## layer (feed the navmesh bake and tap rays). Walls are visual-only (no
-## collider) so they stay out of the navmesh.
+## Corridor surfaces are StaticBody3D + BoxMesh + BoxShape3D on the TERRAIN layer
+## (feed the navmesh bake and tap rays). Walls are visual-only (no collider).
 
-enum { WALL, PLATEAU, RAMP }
+enum { WALL, PATH }
 
-const GRID_W := 16
-const GRID_H := 16
-const X_MARGIN := 2          # side walls
-const STRIP_DEPTH := 3       # z-depth of each terrace
-const STEP := 0.6            # elevation gained per terrace
+const COARSE_W := 10
+const COARSE_H := 10
+const PITCH := 3             # coarse-node spacing in world cells
+const BLOCK := 2             # corridor width in world cells
+const OFFSET := 1            # margin
+const GRID_W := 32           # 4x the previous 16x16 area
+const GRID_H := 32
+const STEP := 0.6            # elevation gained per tier
+const MAX_TIER := 5
 const BASE_THICKNESS := 0.3
-const RAMP_WIDTH := 2.0
 const CANYON_STEP := 0.7
 const GridShader := preload("res://assets/shaders/grid.gdshader")
 
 var _rng := RandomNumberGenerator.new()
 var _cells: Array = []
-var _plateaus: Array = []    # [{x0, x1, z0, z1, elev}] front(low) -> top
-var _ramps: Array = []       # [{a, b, end, cell_x}]
+var _node_elev: Dictionary = {}   # Vector2i -> int tier
 var _grid_mat: ShaderMaterial
-var _wall_mats: Dictionary = {}
 
 func generate(region: NavigationRegion3D, level: int, site_count: int) -> Dictionary:
 	_rng.seed = level * 1013 + 17
 	_init_cells()
-	_plateaus = _build_terraces()
-	_compute_ramps()
-	_mark_cells()
+	_node_elev.clear()
 
-	for p in _plateaus:
-		_build_terrace(region, p)
-	for r in _ramps:
-		_build_ramp(region, r)
+	var adj := _carve_maze()
+	var path := _solution_path(adj)
+	_build_corridor(region, path)
 	_build_walls(region)
 
-	return _collect_data(site_count)
+	return _collect_data(path, site_count)
 
-# --- layout -------------------------------------------------------------------
+# --- maze ---------------------------------------------------------------------
 
-func _build_terraces() -> Array:
-	var rows := _rng.randi_range(3, 4)
-	var x0 := X_MARGIN
-	var w := GRID_W - 2 * X_MARGIN
-	var plateaus: Array = []
-	var z := 1
-	for i in rows:
-		var z1 := z + STRIP_DEPTH - 1
-		if z1 > GRID_H - 1:
-			break
-		plateaus.append({"x0": x0, "x1": x0 + w - 1, "z0": z, "z1": z1, "elev": i})
-		z = z1 + 2   # one-cell gap between terraces for the ramp/step
-	return plateaus
+func _carve_maze() -> Dictionary:
+	var adj: Dictionary = {}
+	var visited: Dictionary = {}
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var entry := Vector2i(0, 0)
+	var stack: Array = [entry]
+	visited[entry] = true
+	while not stack.is_empty():
+		var cur: Vector2i = stack[stack.size() - 1]
+		var options: Array = []
+		for d in dirs:
+			var nb: Vector2i = cur + d
+			if nb.x >= 0 and nb.y >= 0 and nb.x < COARSE_W and nb.y < COARSE_H and not visited.has(nb):
+				options.append(nb)
+		if options.is_empty():
+			stack.pop_back()
+		else:
+			var nb: Vector2i = options[_rng.randi_range(0, options.size() - 1)]
+			visited[nb] = true
+			if not adj.has(cur):
+				adj[cur] = []
+			if not adj.has(nb):
+				adj[nb] = []
+			adj[cur].append(nb)
+			adj[nb].append(cur)
+			stack.append(nb)
+	return adj
 
-func _compute_ramps() -> void:
-	_ramps = []
-	for i in range(_plateaus.size() - 1):
-		var a: Dictionary = _plateaus[i]
-		var end := "right" if (i % 2 == 0) else "left"
-		var cell_x: int = (a.x1 - 1) if end == "right" else a.x0
-		_ramps.append({"a": a, "b": _plateaus[i + 1], "end": end, "cell_x": cell_x})
+## Longest solution: BFS from the entry, take the farthest node, backtrack.
+func _solution_path(adj: Dictionary) -> Array:
+	var entry := Vector2i(0, 0)
+	var dist: Dictionary = {entry: 0}
+	var parent: Dictionary = {entry: entry}
+	var queue: Array = [entry]
+	var head := 0
+	var far := entry
+	while head < queue.size():
+		var cur: Vector2i = queue[head]
+		head += 1
+		for nb in adj.get(cur, []):
+			if not dist.has(nb):
+				dist[nb] = dist[cur] + 1
+				parent[nb] = cur
+				if dist[nb] > dist[far]:
+					far = nb
+				queue.append(nb)
+	var path: Array = []
+	var c: Vector2i = far
+	while c != entry:
+		path.append(c)
+		c = parent[c]
+	path.append(entry)
+	path.reverse()
+	return path
 
-func _mark_cells() -> void:
-	for p in _plateaus:
-		for ix in range(p.x0, p.x1 + 1):
-			for iz in range(p.z0, p.z1 + 1):
-				_cells[ix][iz] = PLATEAU
-	for r in _ramps:
-		var gz: int = r.a.z1 + 1
-		_cells[r.cell_x][gz] = RAMP
-		_cells[r.cell_x + 1][gz] = RAMP
+# --- corridor -----------------------------------------------------------------
 
-# --- geometry -----------------------------------------------------------------
+func _build_corridor(region: NavigationRegion3D, path: Array) -> void:
+	var count := path.size()
+	var cells_per_tier: int = maxi(2, int(float(count) / float(MAX_TIER + 1)))
 
-func _build_terrace(region: NavigationRegion3D, p: Dictionary) -> void:
-	var w: int = p.x1 - p.x0 + 1
-	var d: int = p.z1 - p.z0 + 1
-	var top: float = p.elev * STEP
+	# Elevation per node index (monotonic climb toward the primary, capped).
+	var elev: Array = []
+	for i in count:
+		elev.append(mini(MAX_TIER, i / cells_per_tier))
+		_node_elev[path[i]] = elev[i]
+
+	for i in count:
+		var r := _node_rect(path[i])
+		_fill_box(region, r[0], r[1], r[2], r[3], elev[i])
+		_mark(r[0], r[1], r[2], r[3])
+
+	for i in range(count - 1):
+		var a: Vector2i = path[i]
+		var b: Vector2i = path[i + 1]
+		var pr := _passage_rect(a, b)
+		_mark(pr[0], pr[1], pr[2], pr[3])
+		if elev[i] == elev[i + 1]:
+			_fill_box(region, pr[0], pr[1], pr[2], pr[3], elev[i])
+		else:
+			_build_ramp(region, a, b, pr, elev[i], elev[i + 1])
+
+func _node_rect(n: Vector2i) -> Array:
+	var x0: int = n.x * PITCH + OFFSET
+	var z0: int = n.y * PITCH + OFFSET
+	return [x0, x0 + BLOCK - 1, z0, z0 + BLOCK - 1]
+
+func _passage_rect(a: Vector2i, b: Vector2i) -> Array:
+	var ra := _node_rect(a)
+	var rb := _node_rect(b)
+	if b.x != a.x:
+		var x0: int = mini(ra[1], rb[1]) + 1
+		var x1: int = maxi(ra[0], rb[0]) - 1
+		return [x0, x1, ra[2], ra[3]]
+	else:
+		var z0: int = mini(ra[3], rb[3]) + 1
+		var z1: int = maxi(ra[2], rb[2]) - 1
+		return [ra[0], ra[1], z0, z1]
+
+func _fill_box(region: NavigationRegion3D, x0: int, x1: int, z0: int, z1: int, tier: int) -> void:
+	var w: int = x1 - x0 + 1
+	var d: int = z1 - z0 + 1
+	var top: float = tier * STEP
 	var height: float = top + BASE_THICKNESS
 	var center := Vector3(
-		(p.x0 + w / 2.0) - GRID_W / 2.0,
+		(x0 + w / 2.0) - GRID_W / 2.0,
 		top - height / 2.0,
-		(p.z0 + d / 2.0) - GRID_H / 2.0)
+		(z0 + d / 2.0) - GRID_H / 2.0)
 	region.add_child(_make_box_body(Vector3(w, height, d), center, _grid_material()))
 
-func _build_ramp(region: NavigationRegion3D, r: Dictionary) -> void:
-	var a: Dictionary = r.a
-	var b: Dictionary = r.b
-	var xc: float = (r.cell_x + 1) - GRID_W / 2.0   # center of the two ramp cells
-	var low := Vector3(xc, a.elev * STEP, (a.z1 + 1) - GRID_H / 2.0)
-	var high := Vector3(xc, b.elev * STEP, b.z0 - GRID_H / 2.0)
-	var length := high.distance_to(low)
+func _build_ramp(region: NavigationRegion3D, a: Vector2i, b: Vector2i, pr: Array, ea: int, eb: int) -> void:
+	var low: Vector3
+	var high: Vector3
+	if b.x != a.x:
+		var zc: float = (pr[2] + (pr[3] - pr[2] + 1) / 2.0) - GRID_H / 2.0
+		var lo_x: float = pr[0] - GRID_W / 2.0
+		var hi_x: float = (pr[1] + 1) - GRID_W / 2.0
+		if b.x < a.x:  # travelling -x: swap which side is high
+			var t := lo_x; lo_x = hi_x; hi_x = t
+		low = Vector3(lo_x, ea * STEP, zc)
+		high = Vector3(hi_x, eb * STEP, zc)
+	else:
+		var xc: float = (pr[0] + (pr[1] - pr[0] + 1) / 2.0) - GRID_W / 2.0
+		var lo_z: float = pr[2] - GRID_H / 2.0
+		var hi_z: float = (pr[3] + 1) - GRID_H / 2.0
+		if b.y < a.y:
+			var t := lo_z; lo_z = hi_z; hi_z = t
+		low = Vector3(xc, ea * STEP, lo_z)
+		high = Vector3(xc, eb * STEP, hi_z)
 
+	var length := high.distance_to(low)
 	var body := StaticBody3D.new()
 	body.collision_layer = GameState.LAYER_TERRAIN
 	body.collision_mask = 0
@@ -109,7 +183,7 @@ func _build_ramp(region: NavigationRegion3D, r: Dictionary) -> void:
 	body.global_position = (high + low) / 2.0
 	body.look_at(body.global_position + (low - high), Vector3.UP)
 
-	var size := Vector3(RAMP_WIDTH, 0.15, length)
+	var size := Vector3(BLOCK, 0.15, length)
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = size
@@ -122,20 +196,43 @@ func _build_ramp(region: NavigationRegion3D, r: Dictionary) -> void:
 	col.shape = shape
 	body.add_child(col)
 
+# --- walls (MultiMesh) --------------------------------------------------------
+
 func _build_walls(region: NavigationRegion3D) -> void:
+	var cells: Array = []
 	for ix in GRID_W:
 		for iz in GRID_H:
-			if _cells[ix][iz] != WALL:
-				continue
-			var tiers := _rng.randi_range(1, 3)
-			var h := tiers * CANYON_STEP
-			var mesh := MeshInstance3D.new()
-			var box := BoxMesh.new()
-			box.size = Vector3(1.0, h, 1.0)
-			mesh.mesh = box
-			mesh.position = _cell_center(ix, iz, h / 2.0)
-			mesh.material_override = _wall_material(tiers)
-			region.add_child(mesh)
+			if _cells[ix][iz] == WALL:
+				cells.append(Vector2i(ix, iz))
+	if cells.is_empty():
+		return
+
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = true
+	var box := BoxMesh.new()
+	box.size = Vector3.ONE
+	mm.mesh = box
+	mm.instance_count = cells.size()
+
+	var palette := [Palette.PURPLE, Palette.MAGENTA, Palette.CYAN]
+	for i in cells.size():
+		var c: Vector2i = cells[i]
+		var tiers := _rng.randi_range(1, 3)
+		var h := tiers * CANYON_STEP
+		var basis := Basis.IDENTITY.scaled(Vector3(1.0, h, 1.0))
+		mm.set_instance_transform(i, Transform3D(basis, _cell_center(c.x, c.y, h / 2.0)))
+		mm.set_instance_color(i, palette[(tiers - 1) % palette.size()].darkened(0.35))
+
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.vertex_color_use_as_albedo = true
+	mmi.material_override = mat
+	region.add_child(mmi)
+
+# --- shared helpers -----------------------------------------------------------
 
 func _make_box_body(size: Vector3, center: Vector3, mat: Material) -> StaticBody3D:
 	var body := StaticBody3D.new()
@@ -158,6 +255,12 @@ func _make_box_body(size: Vector3, center: Vector3, mat: Material) -> StaticBody
 func _cell_center(ix: float, iz: float, y: float) -> Vector3:
 	return Vector3(ix - GRID_W / 2.0 + 0.5, y, iz - GRID_H / 2.0 + 0.5)
 
+func _mark(x0: int, x1: int, z0: int, z1: int) -> void:
+	for ix in range(x0, x1 + 1):
+		for iz in range(z0, z1 + 1):
+			if ix >= 0 and iz >= 0 and ix < GRID_W and iz < GRID_H:
+				_cells[ix][iz] = PATH
+
 func _grid_material() -> ShaderMaterial:
 	if _grid_mat == null:
 		_grid_mat = ShaderMaterial.new()
@@ -169,79 +272,48 @@ func _grid_material() -> ShaderMaterial:
 		_grid_mat.set_shader_parameter("glow", 1.6)
 	return _grid_mat
 
-func _wall_material(tiers: int) -> StandardMaterial3D:
-	if not _wall_mats.has(tiers):
-		var palette := [Palette.PURPLE, Palette.MAGENTA, Palette.CYAN]
-		var col: Color = palette[(tiers - 1) % palette.size()]
-		_wall_mats[tiers] = Palette.emissive(col.darkened(0.25), 0.8)
-	return _wall_mats[tiers]
-
 # --- data ---------------------------------------------------------------------
 
-func _collect_data(site_count: int) -> Dictionary:
-	var row0: Dictionary = _plateaus[0]
-	var top: Dictionary = _plateaus[_plateaus.size() - 1]
+func _node_center(n: Vector2i) -> Vector3:
+	var r := _node_rect(n)
+	var tier: int = _node_elev.get(n, 0)
+	return _cell_center((r[0] + r[1]) / 2.0, (r[2] + r[3]) / 2.0, tier * STEP)
 
-	# Enemies enter row 0 at the end opposite its ramp, and cross to reach it.
-	var enter_right: bool = (_ramps[0].end == "left")
-	var spawn_x: int = (row0.x1 - 1) if enter_right else (row0.x0 + 1)
+func _collect_data(path: Array, site_count: int) -> Dictionary:
+	var entry: Vector2i = path[0]
+	var top: Vector2i = path[path.size() - 1]
+
 	var spawns: Array = []
-	for iz in range(row0.z0, row0.z1 + 1):
-		spawns.append(_cell_center(spawn_x, iz, row0.elev * STEP))
-
-	# The primary sits at the far end of the top terrace from where enemies arrive.
-	var arrive_end: String = _ramps[_ramps.size() - 1].end
-	var prim_x: int = (top.x0 + 1) if arrive_end == "right" else (top.x1 - 1)
-	var prim_z: int = int((top.z0 + top.z1) / 2.0)
-	var primary := _cell_center(prim_x, prim_z, top.elev * STEP)
+	var er := _node_rect(entry)
+	var e0: int = _node_elev.get(entry, 0)
+	for ix in range(er[0], er[1] + 1):
+		spawns.append(_cell_center(ix, er[2], e0 * STEP))
 
 	var walkable: Array = []
-	for p in _plateaus:
-		for ix in range(p.x0, p.x1 + 1):
-			for iz in range(p.z0, p.z1 + 1):
-				walkable.append(_cell_center(ix, iz, p.elev * STEP))
-
-	var player_start := _cell_center((row0.x0 + row0.x1) / 2.0, (row0.z0 + row0.z1) / 2.0, row0.elev * STEP)
+	for n in path:
+		walkable.append(_node_center(n))
 
 	return {
-		"primary_position": primary,
+		"primary_position": _node_center(top),
 		"spawn_points": spawns,
-		"secondary_sites": _pick_sites(site_count, primary),
+		"secondary_sites": _pick_sites(path, site_count),
 		"walkable_points": walkable,
-		"player_start": player_start,
+		"player_start": _node_center(path[mini(1, path.size() - 1)]),
 		"terrain_size": Vector2(GRID_W, GRID_H),
 	}
 
-## Spread towers along every terrace so enemies pass towers the whole way up.
-func _pick_sites(site_count: int, primary: Vector3) -> Array:
-	var per_plateau: Array = []
-	for p in _plateaus:
-		var mid_z: int = int((p.z0 + p.z1) / 2.0)
-		var cells: Array = []
-		for frac in [0.2, 0.5, 0.8]:
-			var x: int = p.x0 + int((p.x1 - p.x0) * frac)
-			cells.append(_cell_center(x, mid_z, p.elev * STEP))
-		_shuffle(cells)
-		per_plateau.append(cells)
-
+## Spread towers evenly along the corridor (skipping entry and primary nodes).
+func _pick_sites(path: Array, site_count: int) -> Array:
 	var sites: Array = []
-	var round := 0
-	while sites.size() < site_count and round < 3:
-		for cells in per_plateau:
-			if sites.size() >= site_count:
-				break
-			var pos: Vector3 = cells[round]
-			if pos.distance_to(primary) > 1.5:
-				sites.append(pos)
-		round += 1
+	var inner := path.size() - 2
+	if inner <= 0 or site_count <= 0:
+		return sites
+	var take: int = mini(site_count, inner)
+	for k in take:
+		var idx: int = 1 + int(round((k + 1.0) * inner / (take + 1.0)))
+		idx = clampi(idx, 1, path.size() - 2)
+		sites.append(_node_center(path[idx]))
 	return sites
-
-func _shuffle(arr: Array) -> void:
-	for i in range(arr.size() - 1, 0, -1):
-		var j := _rng.randi_range(0, i)
-		var tmp = arr[i]
-		arr[i] = arr[j]
-		arr[j] = tmp
 
 func _init_cells() -> void:
 	_cells = []
