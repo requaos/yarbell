@@ -300,7 +300,7 @@ func _collect_data(path: Array, site_count: int) -> Dictionary:
 		"spawn_points": spawns,
 		"secondary_sites": _pick_sites(path, site_count),
 		"walkable_points": walkable,
-		"player_start": _node_center(path[mini(1, path.size() - 1)]),
+		"player_start": _node_center(path[maxi(0, path.size() - 2)]),
 		"terrain_size": Vector2(GRID_W, GRID_H),
 	}
 
