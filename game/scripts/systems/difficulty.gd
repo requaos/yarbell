@@ -5,8 +5,8 @@ extends RefCounted
 ## player has more towers to work with, but they start inactive).
 
 static func config_for(level: int) -> Dictionary:
-	var sites := clampi(4 + (level - 1), 4, 12)
-	var total_enemies := roundi((5.0 + 1.6 * (level - 1)) * (1.0 + 0.08 * (sites - 4)))
+	var sites := clampi(6 + (level - 1) * 2, 6, 18)
+	var total_enemies := roundi((5.0 + 1.6 * (level - 1)) * (1.0 + 0.05 * (sites - 6)))
 	var enemy_hp := roundi(10.0 * (1.0 + 0.22 * (level - 1)))
 	var enemy_damage := 3 + (level - 1)
 	var enemy_speed := 4.5 + 0.1 * (level - 1)

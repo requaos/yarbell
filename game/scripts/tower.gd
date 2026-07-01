@@ -10,7 +10,7 @@ extends Node3D
 ## generate coins until the player upgrades them at least once. Each upgrade
 ## also raises coin output, damage and rate of fire, and grows the tower.
 
-enum Type { PRIMARY, PULSE, MISSILE, SHOCKWAVE }
+enum Type { PRIMARY, PULSE, MISSILE, SHOCKWAVE, SLOW }
 
 const ProjectileScene := preload("res://scenes/entities/projectile.tscn")
 
@@ -32,6 +32,9 @@ var blast_radius := 2.0
 var shock_radius := 5.0
 var dot_dps := 4.0
 var dot_duration := 3.0
+# Slow (permanent area-of-effect that reduces enemy speed; stronger per upgrade)
+var slow_radius := 4.0
+var slow_factor := 0.6
 
 var _income_accum := 0.0
 var _attack_accum := 0.0
@@ -68,7 +71,8 @@ func upgrade() -> void:
 	blast_radius *= 1.08
 	shock_radius *= 1.06
 	dot_dps *= 1.25
-	upgrade_cost = roundi(upgrade_cost * 1.6)
+	slow_factor = maxf(0.2, slow_factor * 0.85)   # lower = slower enemies
+	upgrade_cost = roundi(upgrade_cost * 1.3)      # gentler cost scaling
 	_refresh_visual()
 	var target_scale := minf(2.0, 1.0 + (upgrade_level - 1) * 0.12)
 	var tween := create_tween()
@@ -93,6 +97,10 @@ func _fire() -> void:
 				_launch_missile(t.global_position)
 		Type.SHOCKWAVE:
 			_emit_shockwave()
+		Type.SLOW:
+			for e in get_tree().get_nodes_in_group("enemies"):
+				if is_instance_valid(e) and global_position.distance_to(e.global_position) <= slow_radius:
+					e.apply_slow(slow_factor, 0.8)
 
 func _nearest_enemy(radius: float) -> Node3D:
 	var best: Node3D = null
@@ -170,21 +178,21 @@ func _configure_type() -> void:
 			attack_range = 5.0
 			attack_interval = 0.7
 			upgrade_level = 1
-			upgrade_cost = 60
+			upgrade_cost = 40
 		Type.PULSE:
 			tint = Palette.CYAN
 			coin_rate = 4
 			attack_damage = 4
 			attack_range = 4.5
 			attack_interval = 0.8
-			upgrade_cost = 40
+			upgrade_cost = 25
 		Type.MISSILE:
 			tint = Color(1.0, 0.55, 0.15)
 			coin_rate = 5
 			attack_damage = 16
 			attack_range = 6.0
 			attack_interval = 2.0
-			upgrade_cost = 55
+			upgrade_cost = 35
 			blast_radius = 2.0
 		Type.SHOCKWAVE:
 			tint = Color(0.7, 0.4, 1.0)
@@ -192,7 +200,14 @@ func _configure_type() -> void:
 			attack_damage = 0
 			attack_range = shock_radius
 			attack_interval = 2.5
-			upgrade_cost = 60
+			upgrade_cost = 35
+		Type.SLOW:
+			tint = Color(0.3, 0.8, 1.0)
+			coin_rate = 4
+			attack_damage = 0
+			attack_range = slow_radius
+			attack_interval = 0.4
+			upgrade_cost = 25
 
 func _refresh_visual() -> void:
 	for p in _parts:
@@ -259,6 +274,16 @@ func _build_visual() -> void:
 			coil.mesh = coil_mesh
 			coil.position = Vector3(0.0, 0.82, 0.0)
 			_add_part(coil, tint, 6.0)
+		Type.SLOW:
+			# Faint disc on the ground showing the slow field's reach.
+			var disc := MeshInstance3D.new()
+			var disc_mesh := CylinderMesh.new()
+			disc_mesh.top_radius = slow_radius
+			disc_mesh.bottom_radius = slow_radius
+			disc_mesh.height = 0.04
+			disc.mesh = disc_mesh
+			disc.position = Vector3(0.0, 0.04, 0.0)
+			_add_part(disc, tint, 0.6)
 
 func _build_collider() -> void:
 	var body := StaticBody3D.new()

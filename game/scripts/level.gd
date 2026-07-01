@@ -102,7 +102,9 @@ func _place_towers() -> void:
 
 	# One tower per generated site, with a random type (Pulse most common). All
 	# secondaries start inactive until the player upgrades them.
-	var weighted := [Tower.Type.PULSE, Tower.Type.PULSE, Tower.Type.MISSILE, Tower.Type.SHOCKWAVE]
+	var weighted := [
+		Tower.Type.PULSE, Tower.Type.PULSE,
+		Tower.Type.MISSILE, Tower.Type.SHOCKWAVE, Tower.Type.SLOW]
 	for pos in _data["secondary_sites"]:
 		var tower := TowerScene.instantiate()
 		tower.tower_type = weighted[randi() % weighted.size()]

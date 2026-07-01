@@ -29,6 +29,10 @@ var _dot_dps := 0.0
 var _dot_time := 0.0
 var _dot_accum := 0.0
 
+# Slow-tower speed reduction (1.0 = normal).
+var _slow_factor := 1.0
+var _slow_time := 0.0
+
 ## Set by the spawner right after instantiation.
 func configure(hp: int, move_speed: float, target: Vector3, damage: int, size: float, color: Color) -> void:
 	max_hp = hp
@@ -89,6 +93,11 @@ func _process(delta: float) -> void:
 		if _dot_time <= 0.0:
 			_dot_dps = 0.0
 
+	if _slow_time > 0.0:
+		_slow_time -= delta
+		if _slow_time <= 0.0:
+			_slow_factor = 1.0
+
 	if global_position.distance_to(_target) < 1.2:
 		_attack_accum += delta
 		if _attack_accum >= attack_interval:
@@ -99,12 +108,17 @@ func _process(delta: float) -> void:
 	if _agent == null or _agent.is_navigation_finished():
 		return
 	var next := _agent.get_next_path_position()
-	global_position = global_position.move_toward(next, speed * delta)
+	global_position = global_position.move_toward(next, speed * _slow_factor * delta)
 
 ## Applied by shockwave towers; refreshes rather than stacks.
 func apply_dot(dps: float, duration: float) -> void:
 	_dot_dps = maxf(_dot_dps, dps)
 	_dot_time = maxf(_dot_time, duration)
+
+## Applied by slow towers; the strongest slow in effect wins.
+func apply_slow(factor: float, duration: float) -> void:
+	_slow_factor = minf(_slow_factor, factor)
+	_slow_time = maxf(_slow_time, duration)
 
 func take_damage(amount: int) -> void:
 	if _dead:
