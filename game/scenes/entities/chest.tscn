@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://byarbellchest01"]
+
+[ext_resource type="Script" path="res://scripts/chest.gd" id="1_chest"]
+
+[node name="Chest" type="Area3D"]
+script = ExtResource("1_chest")

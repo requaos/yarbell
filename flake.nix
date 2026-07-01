@@ -83,11 +83,11 @@
             cp -r "$tmplSrc/$ver" "$HOME/${godotDataSubdir}/export_templates/$ver"
             chmod -R u+w "$HOME/${godotDataSubdir}/export_templates/$ver"
 
-            # Generate the standard Android debug keystore.
-            keytool -keyalg RSA -genkeypair -alias androiddebugkey \
-              -keypass android -keystore "$HOME/debug.keystore" -storepass android \
-              -dname "CN=Android Debug,O=Android,C=US" -validity 9999 \
-              -deststoretype pkcs12
+            # Use the committed, stable debug keystore so every build signs with
+            # the same key — this lets `adb install -r` work across rebuilds
+            # without having to uninstall first.
+            cp "${./keystore/debug.keystore}" "$HOME/debug.keystore"
+            chmod u+w "$HOME/debug.keystore"
 
             # Point Godot at the SDK, JDK, and debug keystore via editor settings
             # (the keystore has no environment-variable equivalent).
