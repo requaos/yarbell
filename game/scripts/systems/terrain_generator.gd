@@ -25,6 +25,7 @@ const MAX_TIER := 5
 const BASE_THICKNESS := 0.3
 const CANYON_STEP := 0.7
 const GridShader := preload("res://assets/shaders/grid.gdshader")
+const WallShader := preload("res://assets/shaders/wall.gdshader")
 
 var _rng := RandomNumberGenerator.new()
 var _cells: Array = []
@@ -228,9 +229,8 @@ func _build_walls(region: NavigationRegion3D) -> void:
 
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.vertex_color_use_as_albedo = true
+	var mat := ShaderMaterial.new()
+	mat.shader = WallShader
 	mmi.material_override = mat
 	region.add_child(mmi)
 
