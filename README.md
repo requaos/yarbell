@@ -26,6 +26,50 @@ Install it on a device with USB debugging enabled:
 "$ANDROID_HOME/build-tools/35.0.1/adb" install result/yarbell.apk   # or: adb install ...
 ```
 
+## Release to GitHub Releases
+
+Pushing a version tag builds a **release** APK, signs it with your keystore, and
+publishes it as a GitHub Release asset. The workflow lives in
+[`ci.nix`](ci.nix) (written in Nix via
+[`actions.nix`](https://github.com/nialov/actions.nix)) and is rendered to
+`.github/workflows/release.yaml`:
+
+```sh
+nix run .#render-workflows   # regenerate the YAML after editing ci.nix
+```
+
+`nix flake check` fails if the committed YAML drifts from `ci.nix`.
+
+The Nix build produces an **unsigned** release APK (`nix build .#apk-release`),
+so your signing key never enters the Nix store — the workflow zipaligns and signs
+it with `apksigner` from secrets. Create these repository secrets first
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | What it is |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Your release keystore, base64-encoded |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore (store) password |
+| `ANDROID_KEY_ALIAS` | Key alias inside the keystore |
+| `ANDROID_KEY_PASSWORD` | Key password for that alias |
+
+Generate a keystore once and base64-encode it for the secret:
+
+```sh
+nix develop --command keytool -genkeypair -v \
+  -keystore release.keystore -alias yarbell \
+  -keyalg RSA -keysize 2048 -validity 10000
+base64 < release.keystore | pbcopy   # paste into ANDROID_KEYSTORE_BASE64
+```
+
+Then cut a release:
+
+```sh
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+(Running the workflow manually via **workflow_dispatch** builds and signs the APK
+but skips publishing, since there is no tag.)
+
 ## Develop
 
 Enter the dev shell for the Godot editor and all Android tooling on `PATH`:
@@ -43,6 +87,8 @@ first entry (non-destructively).
 
 ```
 flake.nix          Devshell + reproducible APK build (the core pipeline)
+ci.nix             GitHub Actions release workflow, defined in Nix
+.github/workflows/ Rendered workflow YAML (generated from ci.nix)
 game/              The Godot project
   project.godot    App config, main scene, mobile renderer, portrait
   scenes/main.tscn Hello-world scene (centered label)
