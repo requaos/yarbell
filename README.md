@@ -89,6 +89,11 @@ godot game/        # open the project in the editor
 the matching Godot export templates are linked into your Godot data directory on
 first entry (non-destructively).
 
+## Privacy
+
+Yarbell collects no data, requests no permissions, and works fully offline. See
+[PRIVACY.md](PRIVACY.md) for the full privacy policy.
+
 ## Layout
 
 ```
