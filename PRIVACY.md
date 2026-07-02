@@ -65,4 +65,4 @@ document, and the "Effective date" above will be revised accordingly.
 
 If you have questions about this Privacy Policy, please open an issue at
 <https://github.com/requaos/yarbell/issues> or contact the developer at
-`<REPLACE_WITH_CONTACT_EMAIL>`.
+`reqpro@requaos.com`.
