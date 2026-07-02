@@ -178,18 +178,33 @@ func _normalize(buf: PackedFloat32Array, target: float) -> void:
 
 # --- helpers ------------------------------------------------------------------
 
+# Extra frames appended past the real content. The audio mixer resamples on the
+# device (48 kHz output vs our 22050 Hz source) and interpolates a few samples
+# *ahead* of the play head; at a buffer/loop boundary that read-ahead would walk
+# off the end of the allocation and crash (SIGSEGV in the AudioTrack thread).
+# These guard frames keep every read in-bounds. For a loop they duplicate the
+# start of the loop, so the wrap stays seamless as well as safe.
+const WAV_GUARD := 32
+
 func _make_wav(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = MIX
 	wav.stereo = false
+	var count := samples.size()
 	var bytes := PackedByteArray()
-	bytes.resize(samples.size() * 2)
-	for i in samples.size():
+	bytes.resize((count + WAV_GUARD) * 2)
+	for i in count:
 		bytes.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32767.0))
+	# Guard frames: continue seamlessly from the loop start, or silence otherwise.
+	for g in WAV_GUARD:
+		var v := 0
+		if loop and count > 0:
+			v = int(clampf(samples[g % count], -1.0, 1.0) * 32767.0)
+		bytes.encode_s16((count + g) * 2, v)
 	wav.data = bytes
 	if loop:
 		wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		wav.loop_begin = 0
-		wav.loop_end = samples.size()
+		wav.loop_end = count
 	return wav

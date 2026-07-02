@@ -40,6 +40,7 @@ var slow_factor := 0.6
 var _income_accum := 0.0
 var _attack_accum := 0.0
 var _core: MeshInstance3D
+var _slow_disc: MeshInstance3D   # Slow tower's ground range disc; only shown when active
 var _parts: Array = []   # [MeshInstance3D, Color, float energy] for active/inactive look
 
 func is_active() -> bool:
@@ -219,6 +220,10 @@ func _refresh_visual() -> void:
 			node.material_override = Palette.emissive(p[1], p[2])
 		else:
 			node.material_override = Palette.emissive(Color(0.32, 0.32, 0.4), 0.12)
+	# The slow field only exists while the tower is active, so its ground disc
+	# stays hidden until then (otherwise it reads as a grey circle on the map).
+	if _slow_disc:
+		_slow_disc.visible = is_active()
 
 func _add_part(node: MeshInstance3D, color: Color, energy: float) -> void:
 	add_child(node)
@@ -286,6 +291,7 @@ func _build_visual() -> void:
 			disc_mesh.height = 0.04
 			disc.mesh = disc_mesh
 			disc.position = Vector3(0.0, 0.04, 0.0)
+			_slow_disc = disc
 			_add_part(disc, tint, 0.6)
 
 func _build_collider() -> void:
