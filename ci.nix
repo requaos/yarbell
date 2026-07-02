@@ -19,6 +19,13 @@
     jobs.release.steps = [
       { uses = "actions/checkout@v4"; }
       {
+        name = "Set version from tag";
+        # Derive the Android versionName/versionCode from the tag before building
+        # (the nix build picks up the dirty preset; the AAB build reads it too).
+        "if" = "startsWith(github.ref, 'refs/tags/')";
+        run = "bash scripts/set-version.sh \"\${{ github.ref_name }}\"";
+      }
+      {
         name = "Install Nix";
         uses = "cachix/install-nix-action@v31";
         "with".extra_nix_config = "experimental-features = nix-command flakes";
