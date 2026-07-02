@@ -13,6 +13,7 @@ signal coins_changed(value: int)
 signal level_changed(value: int)
 signal primary_hp_changed(current: int, maximum: int)
 signal enemies_changed(alive: int, total: int)
+signal wave_changed(current: int, total: int)
 signal level_cleared()
 signal game_over()
 

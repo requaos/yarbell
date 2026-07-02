@@ -12,12 +12,16 @@ static func config_for(level: int) -> Dictionary:
 	var enemy_speed := 4.5 + 0.1 * (level - 1)
 	var enemy_scale := minf(2.2, 1.0 + 0.06 * (level - 1))
 	var spawn_interval := maxf(0.35, 1.1 - 0.05 * level)
+	# Waves grow slowly with level. Each wave ends in a mini-boss; the final wave
+	# ends in a full boss.
+	var waves := clampi(2 + level / 2, 2, 6)
 	# Weaker enemies read red; stronger ones shift toward a hot white/gold.
 	var heat := clampf((level - 1) / 12.0, 0.0, 1.0)
 	var enemy_color := Palette.RED.lerp(Color(1.0, 0.85, 0.4), heat)
 	return {
 		"secondary_sites": sites,
 		"total_enemies": total_enemies,
+		"waves": waves,
 		"enemy_hp": enemy_hp,
 		"enemy_damage": enemy_damage,
 		"enemy_speed": enemy_speed,

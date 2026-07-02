@@ -117,6 +117,9 @@ func _start_wave() -> void:
 	var spawner := WaveSpawner.new()
 	add_child(spawner)
 	spawner.cleared.connect(_on_level_cleared)
+	if hud:
+		spawner.announce.connect(func(text: String, color: Color) -> void:
+			hud.flash(text, color))
 	spawner.start(self, _data["spawn_points"], primary_position, cfg)
 
 func _on_level_cleared() -> void:

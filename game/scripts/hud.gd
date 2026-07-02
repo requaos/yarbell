@@ -4,6 +4,7 @@ extends CanvasLayer
 ## to the GameState autoload signals.
 
 var _level: Label
+var _wave: Label
 var _coins: Label
 var _enemies: Label
 var _hp: ProgressBar
@@ -24,9 +25,12 @@ func _ready() -> void:
 	root.add_child(top)
 
 	_level = _stat(Palette.PURPLE)
+	_wave = _stat(Palette.CYAN)
 	_coins = _stat(Palette.GOLD)
 	_enemies = _stat(Palette.RED)
 	top.add_child(_level)
+	top.add_child(_spacer())
+	top.add_child(_wave)
 	top.add_child(_spacer())
 	top.add_child(_coins)
 	top.add_child(_spacer())
@@ -70,10 +74,12 @@ func _ready() -> void:
 
 	_on_coins(GameState.coins)
 	_on_level(GameState.level)
+	_on_wave(0, 0)
 	_on_enemies(0, 0)
 
 	GameState.coins_changed.connect(_on_coins)
 	GameState.level_changed.connect(_on_level)
+	GameState.wave_changed.connect(_on_wave)
 	GameState.enemies_changed.connect(_on_enemies)
 	GameState.primary_hp_changed.connect(_on_hp)
 	GameState.game_over.connect(func() -> void: _show_overlay("PRIMARY DESTROYED", Palette.RED))
@@ -86,6 +92,12 @@ func _on_coins(value: int) -> void:
 
 func _on_level(value: int) -> void:
 	_level.text = "LEVEL  %d" % value
+
+func _on_wave(current: int, total: int) -> void:
+	if total <= 0:
+		_wave.text = "WAVE  -"
+	else:
+		_wave.text = "WAVE  %d / %d" % [current, total]
 
 func _on_enemies(alive: int, total: int) -> void:
 	_enemies.text = "ENEMIES  %d / %d" % [alive, total]
