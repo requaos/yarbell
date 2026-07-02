@@ -13,5 +13,10 @@ export.cfg
 *.apk
 *.aab
 
+# Signing keystores — never commit these. The debug keystore under keystore/ is
+# tracked intentionally and is exempt below.
+*.keystore
+!keystore/debug.keystore
+
 # macOS
 .DS_Store
