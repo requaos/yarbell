@@ -291,8 +291,10 @@ func _build_visual() -> void:
 			disc_mesh.height = 0.04
 			disc.mesh = disc_mesh
 			disc.position = Vector3(0.0, 0.04, 0.0)
+			# Translucent so the range field reads clearly without hiding terrain.
+			disc.material_override = Palette.emissive(tint, 1.5, true, 0.2)
 			_slow_disc = disc
-			_add_part(disc, tint, 0.6)
+			add_child(disc)
 
 func _build_collider() -> void:
 	var body := StaticBody3D.new()

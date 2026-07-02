@@ -13,12 +13,14 @@ const GRID := Color("1b2a4a")
 
 ## Build a self-illuminated material that glows: dark albedo, bright emission.
 ## `energy` > 1.0 crosses the glow HDR threshold and blooms.
-func emissive(color: Color, energy: float = 3.0, unshaded: bool = true) -> StandardMaterial3D:
+func emissive(color: Color, energy: float = 3.0, unshaded: bool = true, alpha: float = 1.0) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color.darkened(0.7)
+	mat.albedo_color = Color(color.darkened(0.7), alpha)
 	mat.emission_enabled = true
 	mat.emission = color
 	mat.emission_energy_multiplier = energy
+	if alpha < 1.0:
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	if unshaded:
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return mat
