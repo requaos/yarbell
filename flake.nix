@@ -22,16 +22,20 @@
         templates = pkgs.godot_4-export-templates-bin;
         jdk = pkgs.jdk17;
 
-        buildToolsVersion = "35.0.1";
+        # Used for apksigner/zipalign when signing the release APK.
+        buildToolsVersion = "36.1.0";
 
-        # All Android build dependencies, pinned to what Godot 4.6 expects.
+        # All Android build dependencies, pinned to what Godot 4.7's Gradle build
+        # template requires for the AAB export (platform/build-tools/NDK 36/29).
+        # Gradle cannot auto-install them into the read-only Nix store, so they must
+        # be provided here. The internal (non-Gradle) APK export uses these too.
         androidComposition = pkgs.androidenv.composeAndroidPackages {
           cmdLineToolsVersion = "19.0";
-          platformToolsVersion = "35.0.2";
+          platformToolsVersion = "36.0.0";
           buildToolsVersions = [ buildToolsVersion ];
-          platformVersions = [ "35" ];
+          platformVersions = [ "36" ];
           includeNDK = true;
-          ndkVersions = [ "28.1.13356709" ];
+          ndkVersions = [ "29.0.14206865" ];
           cmakeVersions = [ "3.22.1" ];
           # The emulator is broken/unavailable on aarch64-darwin and is not
           # needed for headless APK export.
@@ -157,7 +161,9 @@
         checks.actions = actionsEval.config.build.check self;
 
         devShells.default = pkgs.mkShell {
-          packages = [ godot jdk androidComposition.androidsdk ];
+          # unzip is used by scripts/build-aab.sh to install the Android build
+          # template (Godot's --install-android-build-template hangs headless).
+          packages = [ godot jdk androidComposition.androidsdk pkgs.unzip ];
 
           ANDROID_HOME = sdkRoot;
           ANDROID_SDK_ROOT = sdkRoot;

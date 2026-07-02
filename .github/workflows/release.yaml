@@ -12,17 +12,19 @@ jobs:
       uses: cachix/install-nix-action@v31
       with:
         extra_nix_config: experimental-features = nix-command flakes
+    - env:
+        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      name: Decode the release keystore
+      run: echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
     - name: Build unsigned release APK
       run: nix build .#apk-release -L
     - env:
-        ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
       name: Sign the release APK
       run: |-
         set -euo pipefail
-        echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
         # zipalign + apksigner come from the pinned build-tools in the dev shell,
         # so signing is reproducible and needs no runner-provided Android SDK.
         nix develop --command bash -c '
@@ -38,12 +40,22 @@ jobs:
             yarbell-aligned.apk
           "$ANDROID_BUILD_TOOLS/apksigner" verify --verbose yarbell.apk
         '
+    - env:
+        ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        OUT_AAB: ${{ github.workspace }}/yarbell.aab
+        RELEASE_KEYSTORE: ${{ runner.temp }}/release.keystore
+      name: Build the signed release AAB
+      run: nix develop --command bash scripts/build-aab.sh
     - if: startsWith(github.ref, 'refs/tags/')
-      name: Publish APK to GitHub Releases
+      name: Publish APK + AAB to GitHub Releases
       uses: softprops/action-gh-release@v2
       with:
         fail_on_unmatched_files: true
-        files: yarbell.apk
+        files: |-
+          yarbell.apk
+          yarbell.aab
 name: release
 'on':
   push:

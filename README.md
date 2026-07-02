@@ -28,9 +28,9 @@ Install it on a device with USB debugging enabled:
 
 ## Release to GitHub Releases
 
-Pushing a version tag builds a **release** APK, signs it with your keystore, and
-publishes it as a GitHub Release asset. The workflow lives in
-[`ci.nix`](ci.nix) (written in Nix via
+Pushing a version tag builds a signed **APK** *and* **AAB** (Android App Bundle,
+for the Play Store) and publishes both as GitHub Release assets. The workflow
+lives in [`ci.nix`](ci.nix) (written in Nix via
 [`actions.nix`](https://github.com/nialov/actions.nix)) and is rendered to
 `.github/workflows/release.yaml`:
 
@@ -40,9 +40,15 @@ nix run .#render-workflows   # regenerate the YAML after editing ci.nix
 
 `nix flake check` fails if the committed YAML drifts from `ci.nix`.
 
-The Nix build produces an **unsigned** release APK (`nix build .#apk-release`),
-so your signing key never enters the Nix store — the workflow zipaligns and signs
-it with `apksigner` from secrets. Create these repository secrets first
+- **APK** — the Nix build produces an *unsigned* release APK
+  (`nix build .#apk-release`), so your signing key never enters the Nix store; the
+  workflow zipaligns and signs it with `apksigner` from secrets.
+- **AAB** — an App Bundle requires Godot's Gradle build, which fetches
+  dependencies at build time and so can't run in the pure Nix sandbox.
+  [`scripts/build-aab.sh`](scripts/build-aab.sh) runs it inside `nix develop`
+  (network available) and Godot signs it directly via release-keystore env vars.
+
+Create these repository secrets first
 (**Settings → Secrets and variables → Actions**):
 
 | Secret | What it is |

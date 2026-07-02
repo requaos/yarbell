@@ -24,20 +24,23 @@
         "with".extra_nix_config = "experimental-features = nix-command flakes";
       }
       {
+        name = "Decode the release keystore";
+        env.ANDROID_KEYSTORE_BASE64 = "\${{ secrets.ANDROID_KEYSTORE_BASE64 }}";
+        run = ''echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"'';
+      }
+      {
         name = "Build unsigned release APK";
         run = "nix build .#apk-release -L";
       }
       {
         name = "Sign the release APK";
         env = {
-          ANDROID_KEYSTORE_BASE64 = "\${{ secrets.ANDROID_KEYSTORE_BASE64 }}";
           ANDROID_KEYSTORE_PASSWORD = "\${{ secrets.ANDROID_KEYSTORE_PASSWORD }}";
           ANDROID_KEY_ALIAS = "\${{ secrets.ANDROID_KEY_ALIAS }}";
           ANDROID_KEY_PASSWORD = "\${{ secrets.ANDROID_KEY_PASSWORD }}";
         };
         run = ''
           set -euo pipefail
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
           # zipalign + apksigner come from the pinned build-tools in the dev shell,
           # so signing is reproducible and needs no runner-provided Android SDK.
           nix develop --command bash -c '
@@ -56,11 +59,25 @@
         '';
       }
       {
-        name = "Publish APK to GitHub Releases";
+        name = "Build the signed release AAB";
+        # An AAB needs Godot's Gradle build (fetches deps), so it runs in the dev
+        # shell rather than the sandboxed nix build. Godot signs it via the
+        # release-keystore env vars set by scripts/build-aab.sh.
+        env = {
+          RELEASE_KEYSTORE = "\${{ runner.temp }}/release.keystore";
+          ANDROID_KEY_ALIAS = "\${{ secrets.ANDROID_KEY_ALIAS }}";
+          ANDROID_KEYSTORE_PASSWORD = "\${{ secrets.ANDROID_KEYSTORE_PASSWORD }}";
+          ANDROID_KEY_PASSWORD = "\${{ secrets.ANDROID_KEY_PASSWORD }}";
+          OUT_AAB = "\${{ github.workspace }}/yarbell.aab";
+        };
+        run = "nix develop --command bash scripts/build-aab.sh";
+      }
+      {
+        name = "Publish APK + AAB to GitHub Releases";
         "if" = "startsWith(github.ref, 'refs/tags/')";
         uses = "softprops/action-gh-release@v2";
         "with" = {
-          files = "yarbell.apk";
+          files = "yarbell.apk\nyarbell.aab";
           fail_on_unmatched_files = true;
         };
       }
