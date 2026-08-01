@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://byarbellsolitaire1"]
+
+[ext_resource type="Script" path="res://scripts/solitaire/board.gd" id="1_board"]
+
+[node name="Solitaire" type="Node2D"]
+script = ExtResource("1_board")

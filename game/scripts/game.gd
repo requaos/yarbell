@@ -52,7 +52,7 @@ func _setup_environment() -> void:
 
 	# Post-process brightness, adjustable from the options menu.
 	env.adjustment_enabled = true
-	env.adjustment_brightness = GameState.brightness
+	env.adjustment_brightness = Settings.brightness
 
 	_env = env
 	var world_env := WorldEnvironment.new()
@@ -61,7 +61,7 @@ func _setup_environment() -> void:
 
 ## Called by the options modal.
 func set_brightness(value: float) -> void:
-	GameState.brightness = value
+	Settings.brightness = value
 	if _env:
 		_env.adjustment_brightness = value
 

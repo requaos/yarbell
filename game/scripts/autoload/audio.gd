@@ -75,6 +75,12 @@ func _build_sfx() -> void:
 	_sfx["fire"] = _make_wav(_sfx_fire(), false)
 	_sfx["boom"] = _make_wav(_sfx_boom(), false)
 	_sfx["death"] = _make_wav(_sfx_death(), false)
+	# Solitaire card SFX.
+	_sfx["card_flip"] = _make_wav(_sfx_click(720.0, 0.05), false)
+	_sfx["card_place"] = _make_wav(_sfx_click(360.0, 0.08), false)
+	_sfx["card_deal"] = _make_wav(_sfx_deal(), false)
+	_sfx["card_invalid"] = _make_wav(_sfx_invalid(), false)
+	_sfx["win"] = _make_wav(_sfx_win(), false)
 
 func _sfx_fire() -> PackedFloat32Array:
 	var n := int(0.09 * MIX)
@@ -109,6 +115,65 @@ func _sfx_death() -> PackedFloat32Array:
 		phase += TAU * lerpf(520.0, 90.0, k) / MIX
 		var noise := (randf() * 2.0 - 1.0) * 0.3 * (1.0 - k)
 		buf[i] = (sin(phase) * 0.5 + noise) * pow(1.0 - k, 1.6)
+	return buf
+
+# A short downward click/tap, used for flips and placements.
+func _sfx_click(start_freq: float, dur: float) -> PackedFloat32Array:
+	var n := int(dur * MIX)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var phase := 0.0
+	for i in n:
+		var k := float(i) / n
+		phase += TAU * lerpf(start_freq, start_freq * 0.5, k) / MIX
+		var noise := (randf() * 2.0 - 1.0) * 0.15 * (1.0 - k)
+		buf[i] = (sin(phase) * 0.4 + noise) * pow(1.0 - k, 2.5)
+	return buf
+
+# A quick riffle for dealing a fresh hand.
+func _sfx_deal() -> PackedFloat32Array:
+	var n := int(0.14 * MIX)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for i in n:
+		var k := float(i) / n
+		var noise := (randf() * 2.0 - 1.0)
+		# amplitude ripples to suggest several cards.
+		var ripple := 0.5 + 0.5 * sin(k * TAU * 6.0)
+		buf[i] = noise * 0.25 * ripple * (1.0 - k)
+	return buf
+
+# A low buzz for illegal moves.
+func _sfx_invalid() -> PackedFloat32Array:
+	var n := int(0.14 * MIX)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var phase := 0.0
+	for i in n:
+		var k := float(i) / n
+		phase += TAU * 120.0 / MIX
+		var sq := 1.0 if sin(phase) >= 0.0 else -1.0
+		buf[i] = sq * 0.28 * pow(1.0 - k, 1.2)
+	return buf
+
+# A rising arpeggio chime for a win.
+func _sfx_win() -> PackedFloat32Array:
+	var notes := [523.25, 659.25, 783.99, 1046.5]   # C5 E5 G5 C6
+	var note_dur := 0.14
+	var n := int(note_dur * notes.size() * MIX)
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for idx in notes.size():
+		var freq: float = notes[idx]
+		var start := int(idx * note_dur * MIX)
+		var count := int(note_dur * MIX)
+		var phase := 0.0
+		for i in count:
+			var k := float(i) / count
+			phase += TAU * freq / MIX
+			var pos := start + i
+			if pos < n:
+				buf[pos] += sin(phase) * 0.32 * pow(1.0 - k, 1.3)
 	return buf
 
 # --- music synthesis ----------------------------------------------------------

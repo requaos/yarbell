@@ -57,16 +57,27 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", Palette.CYAN)
 	vb.add_child(title)
 
-	vb.add_child(_slider("BRIGHTNESS", 0.5, 2.0, GameState.brightness, 0.05,
+	vb.add_child(_slider("BRIGHTNESS", 0.5, 2.0, Settings.brightness, 0.05,
 		func(v: float) -> void:
-			GameState.brightness = v
+			Settings.brightness = v
 			var g := get_tree().get_first_node_in_group("game")
 			if g and g.has_method("set_brightness"):
 				g.set_brightness(v)))
-	vb.add_child(_slider("MUSIC VOLUME", 0.0, 1.0, 0.5, 0.05,
-		func(v: float) -> void: Audio.set_music_volume(v)))
-	vb.add_child(_slider("SFX VOLUME", 0.0, 1.0, 0.8, 0.05,
-		func(v: float) -> void: Audio.set_sfx_volume(v)))
+	vb.add_child(_slider("MUSIC VOLUME", 0.0, 1.0, Settings.music_volume, 0.05,
+		func(v: float) -> void:
+			Settings.music_volume = v
+			Audio.set_music_volume(v)))
+	vb.add_child(_slider("SFX VOLUME", 0.0, 1.0, Settings.sfx_volume, 0.05,
+		func(v: float) -> void:
+			Settings.sfx_volume = v
+			Audio.set_sfx_volume(v)))
+
+	# Optional per-game settings section, provided by the active game scene (the
+	# node in group "game"). Tower Defense's game.gd doesn't implement this, so its
+	# modal is unchanged; Solitaire's board.gd adds its Draw/Redeals controls here.
+	var g := get_tree().get_first_node_in_group("game")
+	if g and g.has_method("build_settings_section"):
+		g.build_settings_section(vb)
 
 	var close := Button.new()
 	close.text = "CLOSE"

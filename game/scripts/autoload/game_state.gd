@@ -1,6 +1,7 @@
 extends Node
-## Global run state for a Yarbell session. Autoloaded as "GameState".
+## Run state for the Tower Defense game. Autoloaded as "GameState".
 ## Systems mutate these values and the HUD binds to the change signals.
+## App-wide, game-agnostic preferences (e.g. brightness) live in Settings instead.
 
 # Physics collision layer bits (Godot layer N -> bit value 1 << (N-1)).
 const LAYER_TERRAIN := 1 << 0 # 1
@@ -27,7 +28,6 @@ var level: int = 1:
 		level = value
 		level_changed.emit(level)
 
-var brightness: float = 1.5   # options default (top of the old 0.5-1.5 range)
 var primary_max_hp: int = 100
 var primary_hp: int = 100:
 	set(value):
