@@ -94,11 +94,11 @@ func _end_wave() -> void:
 	if _wave >= _waves.size() - 1:
 		_phase = PHASE_DONE
 		cleared.emit()
-		else:
-			_wave += 1
-			_phase = PHASE_INTERMISSION
-			_timer = float(_cfg.get("intermission", INTERMISSION))
-			announce.emit("WAVE %d INCOMING" % (_wave + 1), Palette.GOLD)
+	else:
+		_wave += 1
+		_phase = PHASE_INTERMISSION
+		_timer = float(_cfg.get("intermission", INTERMISSION))
+		announce.emit("WAVE %d INCOMING" % (_wave + 1), Palette.GOLD)
 
 func _spawn(rank: int) -> void:
 	var enemy := EnemyScene.instantiate()
