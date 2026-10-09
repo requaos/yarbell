@@ -131,7 +131,7 @@ func _on_level_cleared() -> void:
 		return
 	if hud:
 		hud.hide_overlay()
-	GameState.level += 1
+	GameState.advance_level()
 	start_level(GameState.level)
 
 func _on_game_over() -> void:

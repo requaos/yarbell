@@ -10,6 +10,9 @@ const LAYER_ENEMY := 1 << 2   # 4
 const LAYER_PLAYER := 1 << 3  # 8
 const LAYER_CHEST := 1 << 4   # 16
 
+## Only this many coins carry over from one level to the next.
+const MAX_CARRYOVER_COINS := 100
+
 signal coins_changed(value: int)
 signal level_changed(value: int)
 signal primary_hp_changed(current: int, maximum: int)
@@ -41,6 +44,11 @@ func reset() -> void:
 
 func add_coins(amount: int) -> void:
 	coins += amount
+
+## Advance to the next level; only MAX_CARRYOVER_COINS coins survive the transition.
+func advance_level() -> void:
+	coins = mini(coins, MAX_CARRYOVER_COINS)
+	level += 1
 
 ## Try to spend; returns true only if affordable.
 func spend(amount: int) -> bool:
