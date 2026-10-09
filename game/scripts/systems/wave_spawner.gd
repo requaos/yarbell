@@ -14,7 +14,7 @@ signal announce(text: String, color: Color)
 enum { PHASE_LEADIN, PHASE_SPAWNING, PHASE_CLEARING, PHASE_INTERMISSION, PHASE_DONE }
 
 const LEADIN := 1.5
-const INTERMISSION := 3.0
+const INTERMISSION := 3.0   # fallback; Difficulty supplies a per-level value
 
 var _parent: Node
 var _spawns: Array = []
@@ -94,16 +94,22 @@ func _end_wave() -> void:
 	if _wave >= _waves.size() - 1:
 		_phase = PHASE_DONE
 		cleared.emit()
-	else:
-		_wave += 1
-		_phase = PHASE_INTERMISSION
-		_timer = INTERMISSION
-		announce.emit("WAVE %d INCOMING" % (_wave + 1), Palette.GOLD)
+		else:
+			_wave += 1
+			_phase = PHASE_INTERMISSION
+			_timer = float(_cfg.get("intermission", INTERMISSION))
+			announce.emit("WAVE %d INCOMING" % (_wave + 1), Palette.GOLD)
 
 func _spawn(rank: int) -> void:
 	var enemy := EnemyScene.instantiate()
 	_parent.add_child(enemy)
 	enemy.global_position = _spawns[randi() % _spawns.size()]
+	# Normals draw their breed from the level's weighted pool; boss ranks keep
+	# their fixed silhouettes (enemy.configure decides those).
+	var form: int = Enemy.Form.BLOB
+	if rank == Enemy.Rank.NORMAL:
+		var pool: Array = _cfg.get("breed_pool", [Enemy.Form.BLOB])
+		form = pool[randi() % pool.size()]
 	enemy.configure(
 		int(_cfg["enemy_hp"]),
 		float(_cfg["enemy_speed"]),
@@ -111,7 +117,8 @@ func _spawn(rank: int) -> void:
 		int(_cfg["enemy_damage"]),
 		float(_cfg["enemy_scale"]),
 		_cfg["enemy_color"],
-		rank)
+		rank,
+		form)
 	enemy.died.connect(_on_enemy_died)
 	_alive += 1
 	GameState.enemies_changed.emit(_alive, _wave_total)
