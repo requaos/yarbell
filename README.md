@@ -23,7 +23,7 @@ cached thereafter.
 Install it on a device with USB debugging enabled:
 
 ```sh
-"$ANDROID_HOME/build-tools/35.0.1/adb" install result/yarbell.apk   # or: adb install ...
+"$ANDROID_HOME/platform-tools/adb" install result/yarbell.apk   # or: adb install ...
 ```
 
 ## Release to GitHub Releases

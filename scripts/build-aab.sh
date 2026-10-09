@@ -67,6 +67,16 @@ unzip -o -q "$ANDROID_SOURCE" -d "$PROJECT/android/build"
 printf '%s\n' "$BUILD_VERSION" > "$PROJECT/android/.build_version"
 printf '%s\n' "$BUILD_VERSION" > "$PROJECT/android/build/.build_version"
 
+# Godot's template pins SDK 36 (compileSdk/targetSdk/buildTools), but the dev
+# shell provides only platform/build-tools 37 and Gradle can't auto-install the
+# missing platform into the read-only Nix store, so patch the extracted template
+# up to 37. minSdk (24) and the NDK (29) are unchanged.
+sed -i -E \
+  -e "s|(compileSdk[[:space:]]*:)[[:space:]]*36,|\1 37,|" \
+  -e "s|(targetSdk[[:space:]]*:)[[:space:]]*36,|\1 37,|" \
+  -e "s|(buildTools[[:space:]]*:)[[:space:]]*'36\.[0-9.]+',|\1 '37.0.0',|" \
+  "$PROJECT/android/build/config.gradle"
+
 # Enable the Gradle build and switch the preset's output to AAB (format 1).
 sed -i \
   -e 's|gradle_build/use_gradle_build=false|gradle_build/use_gradle_build=true|' \
