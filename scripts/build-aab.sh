@@ -29,6 +29,35 @@ OUT_AAB="${OUT_AAB:-$PWD/yarbell.aab}"
 : "${ANDROID_KEYSTORE_PASSWORD:?keystore password}"
 : "${ANDROID_KEY_PASSWORD:?key password}"
 
+# AGP resolves compileSdk 37 to the literal package id "platforms;android-37",
+# but nixpkgs installs the platform as android-37.0 (Google's minor-versioned
+# artifact) with a package.xml to match — and the SDK sits in the read-only
+# Nix store, so Gradle can't fix the mismatch itself. Present a writable
+# overlay SDK: every top-level entry symlinked through, plus each
+# minor-versioned platform exposed under its major-only name as a
+# symlink-tree copy with package.xml/source.properties rewritten to api 37.
+SDK_OVERLAY="$(mktemp -d)"
+mkdir -p "$SDK_OVERLAY/platforms"
+for entry in "$ANDROID_HOME"/*; do
+  name="$(basename "$entry")"
+  [ "$name" = "platforms" ] || ln -s "$entry" "$SDK_OVERLAY/$name"
+done
+for platform in "$ANDROID_HOME"/platforms/android-*; do
+  pname="${platform##*/}"                # android-37.0
+  major="${pname%%.*}"                   # android-37
+  ln -s "$platform" "$SDK_OVERLAY/platforms/$pname"
+  if [ "$major" != "$pname" ]; then
+    mkdir -p "$SDK_OVERLAY/platforms/$major"
+    cp -rs "$platform/." "$SDK_OVERLAY/platforms/$major/"
+    rm "$SDK_OVERLAY/platforms/$major/package.xml" "$SDK_OVERLAY/platforms/$major/source.properties"
+    sed -e "s|path=\"platforms;$pname\"|path=\"platforms;$major\"|" \
+        -e "s|<api-level>${pname#android-}<|<api-level>${major#android-}<|" \
+        "$platform/package.xml" > "$SDK_OVERLAY/platforms/$major/package.xml"
+    sed "s|^AndroidVersion.ApiLevel=${pname#android-}\$|AndroidVersion.ApiLevel=${major#android-}|" \
+        "$platform/source.properties" > "$SDK_OVERLAY/platforms/$major/source.properties"
+  fi
+done
+
 # Godot reads the SDK/JDK locations from editor settings (non-secret).
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/godot"
 mkdir -p "$CFG_DIR"
@@ -36,7 +65,7 @@ cat > "$CFG_DIR/editor_settings-4.tres" <<EOF
 [gd_resource type="EditorSettings" format=3]
 
 [resource]
-export/android/android_sdk_path = "$ANDROID_HOME"
+export/android/android_sdk_path = "$SDK_OVERLAY"
 export/android/java_sdk_path = "$JAVA_HOME"
 EOF
 
@@ -76,6 +105,10 @@ sed -i -E \
   -e "s|(targetSdk[[:space:]]*:)[[:space:]]*36,|\1 37,|" \
   -e "s|(buildTools[[:space:]]*:)[[:space:]]*'36\.[0-9.]+',|\1 '37.0.0',|" \
   "$PROJECT/android/build/config.gradle"
+
+# AGP 8.6.1 predates API 37, so it warns it was only tested up to compileSdk 35.
+# The overlay platform above resolves fine — silence the warning.
+echo "android.suppressUnsupportedCompileSdk=37" >> "$PROJECT/android/build/gradle.properties"
 
 # Enable the Gradle build and switch the preset's output to AAB (format 1).
 sed -i \
