@@ -23,17 +23,17 @@
         jdk = pkgs.jdk17;
 
         # Used for apksigner/zipalign when signing the release APK.
-        buildToolsVersion = "36.1.0";
+        buildToolsVersion = "37.0.0";
 
         # All Android build dependencies, pinned to what Godot 4.7's Gradle build
-        # template requires for the AAB export (platform/build-tools/NDK 36/29).
+        # template requires for the AAB export (platform/build-tools/NDK 37/29).
         # Gradle cannot auto-install them into the read-only Nix store, so they must
         # be provided here. The internal (non-Gradle) APK export uses these too.
         androidComposition = pkgs.androidenv.composeAndroidPackages {
           cmdLineToolsVersion = "19.0";
-          platformToolsVersion = "36.0.0";
+          platformToolsVersion = "37.0.1";
           buildToolsVersions = [ buildToolsVersion ];
-          platformVersions = [ "36" ];
+          platformVersions = [ "37" ];
           includeNDK = true;
           ndkVersions = [ "29.0.14206865" ];
           cmakeVersions = [ "3.22.1" ];
