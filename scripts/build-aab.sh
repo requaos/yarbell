@@ -58,6 +58,13 @@ for platform in "$ANDROID_HOME"/platforms/android-*; do
   fi
 done
 
+# Godot injects ANDROID_HOME into the Gradle build from the editor setting
+# above, while ANDROID_SDK_ROOT is still the dev shell's store path — and AGP
+# hard-fails when the two disagree. Point both at the overlay so every consumer
+# sees one SDK.
+export ANDROID_HOME="$SDK_OVERLAY"
+export ANDROID_SDK_ROOT="$SDK_OVERLAY"
+
 # Godot reads the SDK/JDK locations from editor settings (non-secret).
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/godot"
 mkdir -p "$CFG_DIR"
