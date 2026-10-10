@@ -1,8 +1,10 @@
 class_name SolitaireHud
 extends CanvasLayer
-## Solitaire HUD: a top-left toolbar (New / Undo / Hint / Menu) and a centred
-## win overlay. Reuses the neon button styling from NeonUI. The board owns the
-## game logic and connects to these signals.
+## Solitaire HUD: a left-edge toolbar rail (New / Undo / Hint / Menu) and a
+## centred win overlay. The rail lives in the board's empty left margin (piles
+## start at x=142) so it never overlaps the placeholders. Reuses the neon button
+## styling from NeonUI. The board owns the game logic and connects to these
+## signals.
 
 signal new_game_pressed
 signal undo_pressed
@@ -17,7 +19,9 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
-	var bar := HBoxContainer.new()
+	# Vertical rail in the board's left margin (buttons are 92 wide -> x 20..112,
+	# clear of the first pile at x 142).
+	var bar := VBoxContainer.new()
 	bar.add_theme_constant_override("separation", 12)
 	bar.position = Vector2(20.0, 20.0)
 	root.add_child(bar)
