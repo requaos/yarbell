@@ -81,6 +81,9 @@ func _build_sfx() -> void:
 	_sfx["card_deal"] = _make_wav(_sfx_deal(), false)
 	_sfx["card_invalid"] = _make_wav(_sfx_invalid(), false)
 	_sfx["win"] = _make_wav(_sfx_win(), false)
+	# Mahjong tile SFX: a light pick-up click and a lower wooden clack.
+	_sfx["tile_select"] = _make_wav(_sfx_click(520.0, 0.04), false)
+	_sfx["tile_match"] = _make_wav(_sfx_click(280.0, 0.09), false)
 
 func _sfx_fire() -> PackedFloat32Array:
 	var n := int(0.09 * MIX)

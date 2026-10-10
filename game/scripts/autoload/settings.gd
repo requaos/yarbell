@@ -8,6 +8,8 @@ const _PATH := "user://settings.cfg"
 
 enum SolitaireRedeal { UNLIMITED, LIMITED }
 
+enum MahjongLayout { TURTLE, PYRAMID, GATE }
+
 # Display / audio (shared by all games).
 var brightness: float = 1.5:       # top of the 0.5-2.0 options range
 	set(v):
@@ -32,6 +34,12 @@ var solitaire_redeal: SolitaireRedeal = SolitaireRedeal.UNLIMITED:
 		solitaire_redeal = v
 		_save()
 
+# Mahjong rules (classic default: the turtle layout).
+var mahjong_layout: MahjongLayout = MahjongLayout.TURTLE:
+	set(v):
+		mahjong_layout = v
+		_save()
+
 var _loaded := false   # suppress saving while loading initial values
 
 func _ready() -> void:
@@ -45,6 +53,7 @@ func _load() -> void:
 		sfx_volume = cfg.get_value("audio", "sfx", sfx_volume)
 		solitaire_draw_count = cfg.get_value("solitaire", "draw_count", solitaire_draw_count)
 		solitaire_redeal = cfg.get_value("solitaire", "redeal", solitaire_redeal)
+		mahjong_layout = cfg.get_value("mahjong", "layout", mahjong_layout) as MahjongLayout
 	_loaded = true
 
 func _save() -> void:
@@ -56,4 +65,5 @@ func _save() -> void:
 	cfg.set_value("audio", "sfx", sfx_volume)
 	cfg.set_value("solitaire", "draw_count", solitaire_draw_count)
 	cfg.set_value("solitaire", "redeal", solitaire_redeal)
+	cfg.set_value("mahjong", "layout", mahjong_layout)
 	cfg.save(_PATH)

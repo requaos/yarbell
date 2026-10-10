@@ -10,7 +10,7 @@ const OptionsModalScene := preload("res://scenes/ui/options_modal.tscn")
 const GAMES := [
 	{"name": "TOWER DEFENSE", "scene": "res://scenes/game/game.tscn"},
 	{"name": "SOLITAIRE", "scene": "res://scenes/game/solitaire.tscn"},
-	{"name": "MAHJONG", "scene": ""},
+	{"name": "MAHJONG", "scene": "res://scenes/game/mahjong.tscn"},
 ]
 
 var _options
