@@ -97,11 +97,11 @@ func _test_free_tiles() -> void:
 	s.deal(MahjongLayouts.ID.TURTLE)
 	# Corners and the cap are always free; stacked interior tiles are covered.
 	_check(s.is_free(_idx_at(s, 0, 0, 0)), "turtle L0 top-left corner is free")
-	_check(s.is_free(_idx_at(s, 0, 11, 7)), "turtle L0 bottom-right corner is free")
-	_check(s.is_free(_idx_at(s, 3, 6, 3)), "turtle cap is free")
-	_check(not s.is_free(_idx_at(s, 0, 6, 3)), "turtle L0 centre is covered by L1")
-	_check(not s.is_free(_idx_at(s, 1, 6, 3)), "turtle L1 centre is covered by L2")
-	_check(not s.is_free(_idx_at(s, 2, 6, 3)), "turtle L2 centre is covered by the cap")
+	_check(s.is_free(_idx_at(s, 0, 22, 14)), "turtle L0 bottom-right corner is free")
+	_check(s.is_free(_idx_at(s, 3, 13, 6)), "turtle cap is free")
+	_check(not s.is_free(_idx_at(s, 0, 12, 6)), "turtle L0 centre is covered by L1")
+	_check(not s.is_free(_idx_at(s, 1, 12, 6)), "turtle L1 centre is covered by L2")
+	_check(not s.is_free(_idx_at(s, 2, 12, 6)), "turtle L2 centre is covered by the cap")
 
 	# Crafted: blocked between two neighbours on the same layer.
 	var c := _crafted([

@@ -7,11 +7,13 @@ extends Node2D
 
 const OptionsModalScene := preload("res://scenes/ui/options_modal.tscn")
 
-# Tile placement on the half-tile cell grid, lifted per layer for depth.
-const CELL_W := MahjongTileView.SIZE.x * 0.5
-const CELL_H := MahjongTileView.SIZE.y * 0.5
-const LAYER_DX := 7.0
-const LAYER_DY := -13.0
+# Tile placement on the half-tile grid. The grid stride is slightly larger
+# than the tile so edge-to-edge neighbours keep a small readable gap; higher
+# layers lift up-right for depth.
+const CELL_W := 35.0
+const CELL_H := 43.0
+const LAYER_DX := 6.0
+const LAYER_DY := -11.0
 
 const VIEWPORT := Vector2(1280.0, 720.0)
 

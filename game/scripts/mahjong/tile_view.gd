@@ -5,8 +5,8 @@ extends Node2D
 ## border and pips/glyphs) matching the app aesthetic; no image assets. Higher
 ## layers get a drawn thickness edge; the board offsets positions per layer.
 
-const SIZE := Vector2(84.0, 104.0)
-const CORNER := 8.0
+const SIZE := Vector2(68.0, 84.0)
+const CORNER := 7.0
 
 # Group accent colours (GRID-dark body keeps the neon look).
 const GREEN := Color(0.35, 0.9, 0.55)
@@ -35,7 +35,7 @@ func _draw() -> void:
 	if tile.is_empty():
 		return
 	# Slab thickness: a dark under-edge offset toward the lower right.
-	draw_rect(Rect2(Vector2(5.0, 6.0), SIZE), Color(0.02, 0.02, 0.05), true)
+	draw_rect(Rect2(Vector2(4.0, 5.0), SIZE), Color(0.02, 0.02, 0.05), true)
 
 	var r := Rect2(Vector2.ZERO, SIZE)
 	var accent := _accent()
@@ -54,7 +54,7 @@ func _draw() -> void:
 		MahjongState.Group.CHAR:
 			_draw_char(accent)
 		MahjongState.Group.WIND:
-			_draw_glyph(MahjongState.WIND_LABELS[int(tile["rank"])], accent, 44)
+			_draw_glyph(MahjongState.WIND_LABELS[int(tile["rank"])], accent, 36)
 		MahjongState.Group.DRAGON:
 			_draw_diamond(accent)
 		MahjongState.Group.FLOWER:
@@ -107,8 +107,8 @@ func _draw_dots(accent: Color) -> void:
 		9: [0, 1, 2, 3, 4, 5, 6, 7, 8],
 	}
 	var cells: Array = patterns.get(n, [4])
-	var radius := 7.0 if cells.size() > 4 else 9.0
-	var half := Vector2(SIZE.x * 0.28, SIZE.y * 0.30)
+	var radius := 6.0 if cells.size() > 4 else 7.0
+	var half := Vector2(SIZE.x * 0.28, SIZE.y * 0.29)
 	for c in cells:
 		var p := _center() + Vector2((int(c) % 3 - 1) * half.x, (int(c) / 3 - 1) * half.y)
 		_draw_disc(p, radius, accent)
@@ -116,14 +116,14 @@ func _draw_dots(accent: Color) -> void:
 func _draw_bamboo(accent: Color) -> void:
 	var n := int(tile["rank"]) + 1
 	if n == 1:
-		_draw_stick(_center() + Vector2(0.0, -8.0), 7.0, 56.0, accent)
+		_draw_stick(_center() + Vector2(0.0, -6.0), 6.0, 46.0, accent)
 		return
 	var per_row := 3
 	var rows := ceili(float(n) / float(per_row))
-	var bw := 7.0
-	var bh := 34.0 if rows <= 2 else 22.0
-	var stride_x := 20.0
-	var stride_y := bh + 10.0
+	var bw := 6.0
+	var bh := 27.0 if rows <= 2 else 18.0
+	var stride_x := 17.0
+	var stride_y := bh + 8.0
 	var top := _center().y - ((rows - 1) * stride_y + bh) * 0.5
 	for i in n:
 		var row := i / per_row
@@ -136,10 +136,10 @@ func _draw_char(accent: Color) -> void:
 	var n := str(int(tile["rank"]) + 1)
 	var font := ThemeDB.fallback_font
 	var stroke := Color(accent.r, accent.g, accent.b, 0.5)
-	draw_line(Vector2(16.0, 22.0), Vector2(SIZE.x - 16.0, 22.0), stroke, 2.0)
-	draw_line(Vector2(16.0, SIZE.y - 18.0), Vector2(SIZE.x - 16.0, SIZE.y - 18.0), stroke, 2.0)
-	draw_string(font, Vector2(0.0, _center().y + 16.0), n, HORIZONTAL_ALIGNMENT_CENTER,
-		SIZE.x, 40, accent)
+	draw_line(Vector2(13.0, 18.0), Vector2(SIZE.x - 13.0, 18.0), stroke, 2.0)
+	draw_line(Vector2(13.0, SIZE.y - 14.0), Vector2(SIZE.x - 13.0, SIZE.y - 14.0), stroke, 2.0)
+	draw_string(font, Vector2(0.0, _center().y + 13.0), n, HORIZONTAL_ALIGNMENT_CENTER,
+		SIZE.x, 34, accent)
 
 func _draw_glyph(text: String, accent: Color, size: int) -> void:
 	var font := ThemeDB.fallback_font
@@ -148,27 +148,27 @@ func _draw_glyph(text: String, accent: Color, size: int) -> void:
 
 func _draw_diamond(accent: Color) -> void:
 	var c := _center()
-	var s := 24.0
+	var s := 19.0
 	var pts := PackedVector2Array([
 		c + Vector2(0, -s), c + Vector2(s, 0), c + Vector2(0, s), c + Vector2(-s, 0),
 	])
 	draw_colored_polygon(pts, Color(accent.r, accent.g, accent.b, 0.25))
 	draw_polyline(pts, accent, 3.0)
-	_draw_disc(c, 4.0, accent)
+	_draw_disc(c, 3.5, accent)
 
 func _draw_flower() -> void:
 	var c := _center()
 	for dir in [Vector2.UP, Vector2.RIGHT, Vector2.DOWN, Vector2.LEFT]:
-		_draw_disc(c + dir * 14.0, 7.0, PINK)
-	_draw_disc(c, 5.0, Palette.GOLD)
+		_draw_disc(c + dir * 12.0, 6.0, PINK)
+	_draw_disc(c, 4.0, Palette.GOLD)
 
 func _draw_season() -> void:
 	var c := _center()
 	for i in 4:
 		var a := PI / 2.0 * i
-		var tip := c + Vector2(cos(a), sin(a)) * 20.0
-		var left := c + Vector2(cos(a + 2.2), sin(a + 2.2)) * 12.0
-		var right := c + Vector2(cos(a - 2.2), sin(a - 2.2)) * 12.0
+		var tip := c + Vector2(cos(a), sin(a)) * 17.0
+		var left := c + Vector2(cos(a + 2.2), sin(a + 2.2)) * 10.0
+		var right := c + Vector2(cos(a - 2.2), sin(a - 2.2)) * 10.0
 		draw_colored_polygon(PackedVector2Array([tip, left, right]), Palette.GOLD)
 	_draw_disc(c, 4.0, Palette.CYAN)
 

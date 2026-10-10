@@ -27,25 +27,25 @@ static func tile_count(layout: int) -> int:
 # --- layouts -------------------------------------------------------------------
 
 ## The classic 144-tile silhouette: a 12-wide base with pinched rows, a middle
-## tier, an upper tier and a single cap tile.
+## tier, an upper tier and a single half-offset cap tile.
 static func _turtle() -> Array:
 	var out: Array = []
 	_rect(out, 0, 0, 0, 12, 8)
 	# Pinch two rows for the shell silhouette.
-	_drop(out, 0, 0, 1)
-	_drop(out, 0, 11, 1)
-	_drop(out, 0, 0, 6)
-	_drop(out, 0, 11, 6)
-	_rect(out, 1, 3, 1, 6, 6)
-	_rect(out, 2, 4, 2, 5, 3)
-	out.append(_cell(3, 6, 3))
+	_drop(out, 0, 0, 2)
+	_drop(out, 0, 22, 2)
+	_drop(out, 0, 0, 12)
+	_drop(out, 0, 22, 12)
+	_rect(out, 1, 6, 2, 6, 6)
+	_rect(out, 2, 8, 4, 5, 3)
+	out.append(_cell(3, 13, 6))   # half-offset cap over the upper tier
 	return out
 
 ## 92 tiles: a wide plateau with a smaller one stacked on top.
 static func _pyramid() -> Array:
 	var out: Array = []
-	_rect(out, 0, 1, 1, 10, 6)
-	_rect(out, 1, 2, 2, 8, 4)
+	_rect(out, 0, 2, 2, 10, 6)
+	_rect(out, 1, 4, 4, 8, 4)
 	return out
 
 ## 72 tiles: a hollow frame with corner caps and a raised lintel.
@@ -53,15 +53,15 @@ static func _gate() -> Array:
 	var out: Array = []
 	_rect(out, 0, 0, 0, 12, 6)
 	# Hollow out the window.
-	for y in range(2, 4):
-		for x in range(2, 10):
+	for y in range(4, 8, 2):
+		for x in range(4, 20, 2):
 			_drop(out, 0, x, y)
 	# Lintel across the window and four corner caps.
-	_rect(out, 1, 3, 2, 6, 2)
-	out.append(_cell(1, 1, 0))
-	out.append(_cell(1, 10, 0))
-	out.append(_cell(1, 1, 5))
-	out.append(_cell(1, 10, 5))
+	_rect(out, 1, 6, 4, 6, 2)
+	out.append(_cell(1, 2, 0))
+	out.append(_cell(1, 20, 0))
+	out.append(_cell(1, 2, 10))
+	out.append(_cell(1, 20, 10))
 	return out
 
 # --- helpers -------------------------------------------------------------------
@@ -69,10 +69,13 @@ static func _gate() -> Array:
 static func _cell(layer: int, x: int, y: int) -> Dictionary:
 	return {"layer": layer, "x": x, "y": y}
 
+## A w*h block of tiles at tile coordinates (x0, y0). Ordinary neighbours sit
+## two cells apart on the half-tile grid so tiles abut edge-to-edge; odd cell
+## coordinates are reserved for half-offset stacks (e.g. the turtle cap).
 static func _rect(out: Array, layer: int, x0: int, y0: int, w: int, h: int) -> void:
 	for y in h:
 		for x in w:
-			out.append(_cell(layer, x0 + x, y0 + y))
+			out.append(_cell(layer, x0 + x * 2, y0 + y * 2))
 
 ## Remove the cell at (layer, x, y) if present (used to carve shapes).
 static func _drop(out: Array, layer: int, x: int, y: int) -> void:
