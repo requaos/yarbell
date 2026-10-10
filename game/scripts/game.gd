@@ -22,6 +22,9 @@ func _ready() -> void:
 	_setup_environment()
 	_setup_light()
 	_setup_camera()
+	var hud := get_node_or_null("HUD")
+	if hud:
+		hud.menu_pressed.connect(_to_menu)
 
 func _process(delta: float) -> void:
 	var level := get_node_or_null("Level")
@@ -64,6 +67,13 @@ func set_brightness(value: float) -> void:
 	Settings.brightness = value
 	if _env:
 		_env.adjustment_brightness = value
+
+## Back to the game-select screen (HUD MENU button). Drop the run state and any
+## pause so the hub starts clean.
+func _to_menu() -> void:
+	get_tree().paused = false
+	GameState.reset()
+	get_tree().change_scene_to_file("res://scenes/ui/select.tscn")
 
 func _setup_camera() -> void:
 	_camera = Camera3D.new()

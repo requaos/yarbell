@@ -1,7 +1,10 @@
 extends CanvasLayer
-## 2D overlay HUD. Top bar: level / coins / enemies remaining. A primary-tower
-## HP bar sits below it. A center overlay shows level-cleared / game-over. Binds
-## to the GameState autoload signals.
+## 2D overlay HUD. Top bar: level / coins / enemies remaining plus a MENU button
+## that returns to the game-select screen. A primary-tower HP bar sits below it.
+## A center overlay shows level-cleared / game-over. Binds to the GameState
+## autoload signals.
+
+signal menu_pressed
 
 var _level: Label
 var _wave: Label
@@ -35,6 +38,7 @@ func _ready() -> void:
 	top.add_child(_coins)
 	top.add_child(_spacer())
 	top.add_child(_enemies)
+	top.add_child(_btn("MENU", func() -> void: menu_pressed.emit()))
 
 	_hp = ProgressBar.new()
 	_hp.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -138,6 +142,19 @@ func _spacer() -> Control:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return spacer
+
+## Small neon toolbar button (same styling as the Solitaire HUD's).
+func _btn(text: String, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.custom_minimum_size = Vector2(108.0, 48.0)
+	b.add_theme_font_size_override("font_size", 20)
+	b.add_theme_color_override("font_color", Palette.CYAN)
+	b.add_theme_stylebox_override("normal", NeonUI.button_style(0.12))
+	b.add_theme_stylebox_override("hover", NeonUI.button_style(0.25))
+	b.add_theme_stylebox_override("pressed", NeonUI.button_style(0.4))
+	b.pressed.connect(cb)
+	return b
 
 func _bar_style(color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
