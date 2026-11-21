@@ -10,6 +10,8 @@ enum SolitaireRedeal { UNLIMITED, LIMITED }
 
 enum MahjongLayout { TURTLE, PYRAMID, GATE }
 
+enum MinesweeperDifficulty { BEGINNER, INTERMEDIATE, EXPERT }
+
 # Display / audio (shared by all games).
 var brightness: float = 1.5:       # top of the 0.5-2.0 options range
 	set(v):
@@ -40,6 +42,12 @@ var mahjong_layout: MahjongLayout = MahjongLayout.TURTLE:
 		mahjong_layout = v
 		_save()
 
+# Minesweeper rules (classic default: beginner).
+var minesweeper_difficulty: MinesweeperDifficulty = MinesweeperDifficulty.BEGINNER:
+	set(v):
+		minesweeper_difficulty = v
+		_save()
+
 var _loaded := false   # suppress saving while loading initial values
 
 func _ready() -> void:
@@ -54,6 +62,7 @@ func _load() -> void:
 		solitaire_draw_count = cfg.get_value("solitaire", "draw_count", solitaire_draw_count)
 		solitaire_redeal = cfg.get_value("solitaire", "redeal", solitaire_redeal)
 		mahjong_layout = cfg.get_value("mahjong", "layout", mahjong_layout) as MahjongLayout
+		minesweeper_difficulty = cfg.get_value("minesweeper", "difficulty", minesweeper_difficulty) as MinesweeperDifficulty
 	_loaded = true
 
 func _save() -> void:
@@ -66,4 +75,5 @@ func _save() -> void:
 	cfg.set_value("solitaire", "draw_count", solitaire_draw_count)
 	cfg.set_value("solitaire", "redeal", solitaire_redeal)
 	cfg.set_value("mahjong", "layout", mahjong_layout)
+	cfg.set_value("minesweeper", "difficulty", minesweeper_difficulty)
 	cfg.save(_PATH)

@@ -11,6 +11,7 @@ const GAMES := [
 	{"name": "TOWER DEFENSE", "scene": "res://scenes/game/game.tscn"},
 	{"name": "SOLITAIRE", "scene": "res://scenes/game/solitaire.tscn"},
 	{"name": "MAHJONG", "scene": "res://scenes/game/mahjong.tscn"},
+	{"name": "MINESWEEPER", "scene": "res://scenes/game/minesweeper.tscn"},
 ]
 
 var _options
